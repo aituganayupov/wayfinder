@@ -1,0 +1,10 @@
+# Служебное и личное — не публикуется
+__pycache__/
+*.pyc
+.claude/
+update_all_log.txt
+wayfinder-backup-*.json
+*.tmp
+
+# Данные собирает облачное автообновление при каждой публикации
+data/

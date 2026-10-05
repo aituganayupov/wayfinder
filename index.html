@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wayfinder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <div class="corner-toolbar">
+    <button type="button" id="cornerThemeBtn" class="corner-btn" title="Сменить тему"></button>
+    <button type="button" id="cornerSettingsBtn" class="corner-btn" title="Настройки">
+      <svg viewBox="0 0 20 20" fill="none"><path d="M3.5 6h6M13.5 6H16.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10.5" cy="6" r="2" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 14h3M10.5 14H16.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="7.5" cy="14" r="2" stroke="currentColor" stroke-width="1.6"/></svg>
+    </button>
+  </div>
+
+  <div class="nav-flyout" id="financeFlyout">
+    <button class="tab-btn nav-flyout-item" data-tab="watchlist">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M10 2.8l2.2 4.5 4.9.7-3.55 3.45.84 4.9L10 14.05l-4.39 2.3.84-4.9L2.9 8l4.9-.7Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Избранное
+    </button>
+    <button class="tab-btn nav-flyout-item" data-tab="portfolio">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="6" width="15" height="10.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 6V4.8a1.3 1.3 0 011.3-1.3h3.4A1.3 1.3 0 0113 4.8V6M2.5 10.5h15" stroke="currentColor" stroke-width="1.5"/></svg></span> Портфель
+    </button>
+    <button class="tab-btn nav-flyout-item" data-tab="charts">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3 3.5v13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 13l3-4.5 3 2.5 4-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 9.5l3.5 2.2 3-1.7 3.5 1.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/></svg></span> Графики
+    </button>
+    <button class="tab-btn nav-flyout-item" data-tab="currency">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3.5 7h11M11.5 4l3 3-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 13h-11M8.5 10l-3 3 3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Конвертер
+    </button>
+    <div class="nav-flyout-sep"></div>
+    <button class="tab-btn nav-flyout-item" data-tab="market">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M10 6.3v7.4M7.9 8c0-1 .9-1.7 2.1-1.7 1.4 0 2.3.7 2.3 1.5 0 2.1-4.4 1-4.4 3 0 .8.9 1.5 2.2 1.5 1.3 0 2.1-.6 2.1-1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Криптовалюта
+    </button>
+    <button class="tab-btn nav-flyout-item" data-tab="stocks">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3 16.5H17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5 16v-5M10 16V6M15 16v-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Акции
+    </button>
+    <button class="tab-btn nav-flyout-item" data-tab="indices">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3 3.5v13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 12.5l3-3.5 2.5 2 4.5-5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Индексы
+    </button>
+    <button class="tab-btn nav-flyout-item" data-tab="commodities">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M2 16.5l1.6-4h4.8l1.6 4ZM10 16.5l1.6-4h4.8l1.6 4ZM6 12.5l1.6-4h4.8l1.6 4" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span> Сырьё
+    </button>
+    <button class="tab-btn nav-flyout-item" data-tab="rates">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="6" cy="6" r="2.2" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="14" r="2.2" stroke="currentColor" stroke-width="1.5"/><path d="M15.5 4.5l-11 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Ставки
+    </button>
+    <button class="tab-btn nav-flyout-item" data-tab="events">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4.5" width="14" height="12.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8.5h14M7 2.8v3.4M13 2.8v3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="12.7" r="1.3" fill="currentColor"/></svg></span> Календарь
+    </button>
+    <button class="tab-btn nav-flyout-item" data-tab="marketNews">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="4" width="15" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="6.5" width="4" height="3.5" rx="0.6" stroke="currentColor" stroke-width="1.2"/><path d="M11 7h4M11 9.5h4M5 12.8h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span> Новости
+    </button>
+  </div>
+
+  <nav class="sidebar">
+    <div class="sidebar-title">Wayfinder</div>
+    <button class="tab-btn active" data-tab="home">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3.5 9.5 10 4l6.5 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 8.5V16h9V8.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 16v-4h4v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Главная
+    </button>
+    <div class="nav-item-group">
+      <button class="tab-btn nav-parent-btn" id="financeNavBtn">
+        <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3 14.5 8 9l3 3 6-6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.5 5.5H17v3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Финансовый сектор
+        <span class="nav-caret">▸</span>
+      </button>
+    </div>
+
+    <button class="tab-btn" data-tab="savings">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="5.5" width="15" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 9H17.5" stroke="currentColor" stroke-width="1.6"/><circle cx="14" cy="11.5" r="1" fill="currentColor"/></svg></span> Накопления
+    </button>
+    <button class="tab-btn" data-tab="planner">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="4" y="3" width="12" height="14" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M7 7h6M7 10h6M7 13h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Ежедневник
+    </button>
+    <button class="tab-btn" data-tab="study">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M10 5.3C8.5 4.3 6.2 4 3.8 4.3v10.8c2.4-.3 4.7 0 6.2 1 1.5-1 3.8-1.3 6.2-1V4.3c-2.4-.3-4.7 0-6.2 1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 5.3v10.8" stroke="currentColor" stroke-width="1.5"/></svg></span> Учёба
+    </button>
+    <button class="tab-btn" data-tab="weather">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="6.5" r="2.3" stroke="currentColor" stroke-width="1.3"/><path d="M7 2.8v1M2.8 6.5h1M3.6 3.6l.8.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M6 16.2h8a3 3 0 000-6 4.6 4.6 0 00-8.8-1.3A3.4 3.4 0 006 16.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Погода
+    </button>
+    <button class="tab-btn" data-tab="notes">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M4 3.5h8l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-12a1 1 0 011-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 3.5v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M6 11h8M6 14h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span> Заметки
+    </button>
+
+    <div class="sidebar-clock">
+      <div class="sidebar-clock-time" id="sidebarClockTime"></div>
+      <div class="sidebar-clock-date" id="sidebarClockDate"></div>
+    </div>
+
+    <button class="tab-btn sidebar-settings-btn" data-tab="settings" title="Настройки">
+      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3.5 6h6M13.5 6H16.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10.5" cy="6" r="2" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 14h3M10.5 14H16.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="7.5" cy="14" r="2" stroke="currentColor" stroke-width="1.6"/></svg></span>
+    </button>
+  </nav>
+
+  <main class="content">
+   <div class="content-inner">
+    <!-- ГЛАВНАЯ -->
+    <section id="home" class="tab-content active">
+      <div class="home-hero">
+        <span class="home-hero-side-label">Wayfinder</span>
+        <div class="home-hero-number">01</div>
+
+        <div class="home-hero-topline">
+          <span class="home-hero-logo">Wayfinder</span>
+          <div class="home-hero-clock">
+            <div class="home-greeting-time" id="homeClockTime"></div>
+            <div class="home-greeting-date" id="homeClockDate"></div>
+          </div>
+        </div>
+
+        <div class="home-hero-main">
+          <div class="home-hero-text">
+            <h1 id="homeGreetingText">Добрый день! 👋</h1>
+            <p class="home-hero-sub">Управляйте деньгами уверенно — сбережения, курсы валют, крипта и акции в одном месте.</p>
+          </div>
+
+          <div class="home-hero-menu">
+            <div class="home-hero-menu-title">Разделы</div>
+            <button class="tab-btn home-hero-menu-item" data-tab="savings"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="5.5" width="15" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 9H17.5" stroke="currentColor" stroke-width="1.6"/><circle cx="14" cy="11.5" r="1" fill="currentColor"/></svg></span> Накопления</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="planner"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="4" y="3" width="12" height="14" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M7 7h6M7 10h6M7 13h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Ежедневник</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="study"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M10 5.3C8.5 4.3 6.2 4 3.8 4.3v10.8c2.4-.3 4.7 0 6.2 1 1.5-1 3.8-1.3 6.2-1V4.3c-2.4-.3-4.7 0-6.2 1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 5.3v10.8" stroke="currentColor" stroke-width="1.5"/></svg></span> Учёба</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="watchlist"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M10 2.8l2.2 4.5 4.9.7-3.55 3.45.84 4.9L10 14.05l-4.39 2.3.84-4.9L2.9 8l4.9-.7Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Избранное</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="portfolio"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="6" width="15" height="10.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 6V4.8a1.3 1.3 0 011.3-1.3h3.4A1.3 1.3 0 0113 4.8V6M2.5 10.5h15" stroke="currentColor" stroke-width="1.5"/></svg></span> Портфель</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="charts"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3 3.5v13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 13l3-4.5 3 2.5 4-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 9.5l3.5 2.2 3-1.7 3.5 1.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/></svg></span> Графики</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="market"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M10 6.3v7.4M7.9 8c0-1 .9-1.7 2.1-1.7 1.4 0 2.3.7 2.3 1.5 0 2.1-4.4 1-4.4 3 0 .8.9 1.5 2.2 1.5 1.3 0 2.1-.6 2.1-1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Криптовалюта</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="currency"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3.5 7h11M11.5 4l3 3-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 13h-11M8.5 10l-3 3 3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Конвертер</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="stocks"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3 16.5H17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5 16v-5M10 16V6M15 16v-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Акции</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="indices"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3 3.5v13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 12.5l3-3.5 2.5 2 4.5-5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Индексы</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="commodities"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M2 16.5l1.6-4h4.8l1.6 4ZM10 16.5l1.6-4h4.8l1.6 4ZM6 12.5l1.6-4h4.8l1.6 4" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span> Сырьё</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="rates"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="6" cy="6" r="2.2" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="14" r="2.2" stroke="currentColor" stroke-width="1.5"/><path d="M15.5 4.5l-11 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Ставки</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="events"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4.5" width="14" height="12.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8.5h14M7 2.8v3.4M13 2.8v3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="12.7" r="1.3" fill="currentColor"/></svg></span> Календарь</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="marketNews"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="4" width="15" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="6.5" width="4" height="3.5" rx="0.6" stroke="currentColor" stroke-width="1.2"/><path d="M11 7h4M11 9.5h4M5 12.8h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span> Новости</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="weather"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="6.5" r="2.3" stroke="currentColor" stroke-width="1.3"/><path d="M7 2.8v1M2.8 6.5h1M3.6 3.6l.8.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M6 16.2h8a3 3 0 000-6 4.6 4.6 0 00-8.8-1.3A3.4 3.4 0 006 16.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Погода</button>
+            <button class="tab-btn home-hero-menu-item" data-tab="notes"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M4 3.5h8l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1v-12a1 1 0 011-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 3.5v4h4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M6 11h8M6 14h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span> Заметки</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-grid">
+        <div class="home-card">
+          <h3>📅 Календарь</h3>
+          <div id="homeCalendar" class="home-calendar"></div>
+        </div>
+
+        <div class="home-card">
+          <h3>✅ Сегодня</h3>
+          <div id="homeTodayTasks" class="home-list"></div>
+        </div>
+
+        <div class="home-card">
+          <h3>🌤️ Погода</h3>
+          <div id="homeWeather" class="home-weather"></div>
+        </div>
+
+        <div class="home-card">
+          <h3>⏰ Ближайшие дедлайны</h3>
+          <div id="homeDeadlines" class="home-list"></div>
+        </div>
+
+        <div class="home-card">
+          <h3>💰 Накопления</h3>
+          <div id="homeSavings" class="home-savings"></div>
+        </div>
+
+        <div class="home-card">
+          <h3>📈 Рынок</h3>
+          <div id="homeMarket" class="home-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ИЗБРАННОЕ -->
+    <section id="watchlist" class="tab-content">
+      <div class="market-header">
+        <h2>Избранное</h2>
+        <button id="watchRefreshBtn" title="Обновить">⟳</button>
+      </div>
+      <div class="asset-picker asset-search">
+        <svg class="asset-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13.2 13.2 17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input type="text" id="watchAddInput" placeholder="Добавить актив: Bitcoin, Сбербанк, Apple, золото, доллар..." autocomplete="off">
+        <div class="asset-picker-list" id="watchAddList"></div>
+      </div>
+      <div id="watchMeta" class="market-meta"></div>
+      <div id="watchFilters" class="events-filters"></div>
+      <div id="watchList" class="watch-list"></div>
+      <div class="commodities-sources">
+        Звёздочка рядом с активом во вкладках «Криптовалюта», «Акции», «Индексы» и «Сырьё» тоже добавляет его сюда.
+        Цены: криптовалюты — Bybit, российские акции и индексы — Мосбиржа (акции с задержкой 15 минут), зарубежные акции, индексы, сырьё и валюты — Yahoo Finance (нужен server.py).
+        Изменение — за сутки (у криптовалют) или к закрытию прошлого торгового дня; мини-график — за неделю.
+      </div>
+    </section>
+
+    <!-- ВИРТУАЛЬНЫЙ ПОРТФЕЛЬ -->
+    <section id="portfolio" class="tab-content">
+      <div class="market-header">
+        <h2>Виртуальный портфель</h2>
+        <div class="portfolio-header-actions">
+          <button type="button" id="portfolioResetBtn" class="secondary-btn">Начать заново</button>
+          <button id="portfolioRefreshBtn" title="Обновить">⟳</button>
+        </div>
+      </div>
+      <p class="portfolio-intro">Учебная торговля без реальных денег: у вас есть виртуальный капитал, а активы покупаются и продаются по настоящим рыночным ценам. Можно спокойно пробовать и смотреть, как меняется результат.</p>
+      <div id="portfolioMeta" class="market-meta"></div>
+      <div id="portfolioSummary" class="rates-cards"></div>
+
+      <div class="portfolio-layout">
+        <div class="rates-panel portfolio-trade">
+          <div class="rates-panel-title">Новая сделка</div>
+          <div class="trade-side">
+            <button type="button" class="trade-side-btn active" data-side="buy">Купить</button>
+            <button type="button" class="trade-side-btn" data-side="sell">Продать</button>
+          </div>
+          <div class="asset-picker">
+            <input type="text" id="tradeAssetInput" placeholder="Выберите актив: Bitcoin, Сбербанк, Apple..." autocomplete="off">
+            <div class="asset-picker-list" id="tradeAssetList"></div>
+          </div>
+          <div id="tradeAssetInfo" class="trade-asset-info"></div>
+          <div class="trade-fields">
+            <div class="field">
+              <label for="tradeQty">Количество</label>
+              <input type="number" id="tradeQty" min="0" step="any" placeholder="0">
+            </div>
+            <div class="field">
+              <label for="tradeSum">Сумма, ₽</label>
+              <input type="number" id="tradeSum" min="0" step="any" placeholder="0">
+            </div>
+          </div>
+          <div class="trade-quick" id="tradeQuick">
+            <button type="button" data-part="0.1">10%</button>
+            <button type="button" data-part="0.25">25%</button>
+            <button type="button" data-part="0.5">50%</button>
+            <button type="button" data-part="1">Всё</button>
+          </div>
+          <div id="tradeAvailable" class="trade-available"></div>
+          <button type="button" id="tradeSubmitBtn" class="trade-submit">Купить</button>
+          <div id="tradeMessage" class="trade-message"></div>
+        </div>
+
+        <div class="rates-panel portfolio-positions">
+          <div class="rates-panel-title">Мои активы</div>
+          <div class="ofz-table-wrap">
+            <table class="ofz-table portfolio-table">
+              <thead>
+                <tr><th>Актив</th><th class="num">Количество</th><th class="num">Средняя цена</th><th class="num">Цена сейчас</th><th class="num">Стоимость</th><th class="num">Результат</th><th></th></tr>
+              </thead>
+              <tbody id="portfolioPositions"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="rates-panel">
+        <div class="rates-panel-title">История сделок</div>
+        <div id="portfolioTrades" class="portfolio-trades"></div>
+      </div>
+      <div class="commodities-sources">
+        Всё хранится только в этом браузере и не связано с реальными деньгами. Сделки проходят по последней цене без комиссий;
+        активы в долларах пересчитываются в рубли по текущему курсу, поэтому результат учитывает и изменение курса доллара.
+        Цены: криптовалюты — Bybit, российские акции — Мосбиржа (задержка 15 минут), зарубежные акции, сырьё и валюты — Yahoo Finance (нужен server.py).
+      </div>
+    </section>
+
+    <!-- ГРАФИКИ -->
+    <section id="charts" class="tab-content">
+      <div class="market-header">
+        <h2>Графики</h2>
+        <button id="chartsRefreshBtn" title="Обновить">⟳</button>
+      </div>
+      <div class="charts-controls">
+        <div class="charts-pickers">
+          <div class="asset-picker charts-picker">
+            <i class="legend-swatch charts-picker-swatch" style="background: var(--series-1)"></i>
+            <input type="text" id="chartAInput" placeholder="Выберите актив" autocomplete="off">
+            <div class="asset-picker-list" id="chartAList"></div>
+          </div>
+          <span class="charts-vs">и</span>
+          <div class="asset-picker charts-picker">
+            <i class="legend-swatch charts-picker-swatch" style="background: var(--series-2)"></i>
+            <input type="text" id="chartBInput" placeholder="+ Сравнить с..." autocomplete="off">
+            <button type="button" id="chartBClear" class="asset-picker-clear" title="Убрать сравнение">✕</button>
+            <div class="asset-picker-list" id="chartBList"></div>
+          </div>
+        </div>
+        <div id="chartPeriods" class="charts-periods"></div>
+      </div>
+      <div id="chartStats" class="chart-stats"></div>
+      <div class="rates-panel">
+        <div id="chartLegend" class="chart-legend"></div>
+        <div id="chartMain" class="chart-wrap chart-main"></div>
+        <div id="chartHint" class="rates-hint"></div>
+      </div>
+      <div class="charts-presets-title">Интересные сравнения</div>
+      <div id="chartPresets" class="events-filters"></div>
+      <div id="chartError" class="error"></div>
+      <div class="commodities-sources">
+        Источники: криптовалюты — Bybit; российские акции и индексы — Мосбиржа (задержка 15 минут); зарубежные акции, индексы и сырьё — Yahoo Finance;
+        валюты к рублю — Yahoo Finance внутри дня и официальный курс Банка России по дням. Для зарубежных активов и валют нужен server.py.
+        При сравнении двух активов обе линии начинаются с 0%: так видно, что выросло сильнее за один и тот же период.
+      </div>
+    </section>
+
+    <!-- КОНВЕРТЕР ВАЛЮТ -->
+    <section id="currency" class="tab-content">
+      <h2>Конвертер валют</h2>
+      <div class="converter-card">
+        <div class="converter-row">
+          <label for="convFromAmount">Отдаю</label>
+          <div class="converter-line">
+            <input type="number" id="convFromAmount" value="1" min="0" step="any">
+            <div class="asset-picker converter-unit">
+              <input type="text" id="convFromUnit" autocomplete="off" aria-label="Из валюты">
+              <div class="asset-picker-list" id="convFromList"></div>
+            </div>
+          </div>
+        </div>
+        <button type="button" id="convSwapBtn" class="converter-swap" title="Поменять местами">⇅</button>
+        <div class="converter-row">
+          <label for="convToAmount">Получаю</label>
+          <div class="converter-line">
+            <input type="number" id="convToAmount" min="0" step="any">
+            <div class="asset-picker converter-unit">
+              <input type="text" id="convToUnit" autocomplete="off" aria-label="В валюту">
+              <div class="asset-picker-list" id="convToList"></div>
+            </div>
+          </div>
+        </div>
+        <div id="convRate" class="converter-rate"></div>
+      </div>
+      <div id="convQuick" class="events-filters converter-quick"></div>
+      <div class="rates-panel">
+        <div id="convTableTitle" class="rates-panel-title">Быстрый пересчёт</div>
+        <div id="convTable" class="converter-table"></div>
+      </div>
+      <div id="convError" class="error"></div>
+      <div class="commodities-sources" id="convSources"></div>
+    </section>
+
+    <!-- РЫНОК -->
+    <section id="market" class="tab-content">
+      <div id="marketListView">
+        <div class="market-header">
+          <h2>Криптовалюта</h2>
+          <button id="marketRefreshBtn" title="Обновить">⟳</button>
+        </div>
+        <input type="text" id="marketSearch" class="market-search" placeholder="Поиск монеты, напр. BTC">
+        <div id="marketMeta" class="market-meta"></div>
+        <div id="marketList" class="market-list"></div>
+        <div id="marketError" class="error"></div>
+      </div>
+
+      <div id="marketChartView" class="market-chart-view" style="display:none">
+        <div class="market-header">
+          <button id="marketBackBtn" class="market-back-btn">← Назад к списку</button>
+          <h2 id="marketChartTitle"></h2>
+        </div>
+        <div id="marketChartContainer" class="market-chart-container"></div>
+      </div>
+    </section>
+
+    <!-- АКЦИИ -->
+    <section id="stocks" class="tab-content">
+      <div class="market-header">
+        <h2>Акции</h2>
+        <button id="stocksRefreshBtn" title="Обновить">⟳</button>
+      </div>
+      <input type="text" id="stocksSearch" class="market-search" placeholder="Поиск акции, напр. Apple, Сбербанк">
+      <div id="stocksMeta" class="market-meta"></div>
+      <div id="stocksList" class="market-list"></div>
+      <div id="stocksError" class="error"></div>
+    </section>
+
+    <!-- ФОНДОВЫЕ ИНДЕКСЫ -->
+    <section id="indices" class="tab-content">
+      <div id="indicesListView">
+        <div class="market-header">
+          <h2>Фондовые индексы</h2>
+          <button id="indicesRefreshBtn" title="Обновить">⟳</button>
+        </div>
+        <div id="indicesMeta" class="market-meta"></div>
+        <div id="indicesSummary" class="indices-summary"></div>
+        <div id="indicesList"></div>
+        <div id="indicesError" class="error"></div>
+        <div class="commodities-sources">
+          Источники: индексы Мосбиржи (IMOEX, RTSI) — официальный API Московской биржи (iss.moex.com), в реальном времени;
+          индексы США — в реальном времени, Европы и Азии — с задержкой биржи ~15 минут (Yahoo Finance).
+          Изменение — к закрытию предыдущего торгового дня. Мини-график — за последние 5 торговых дней.
+        </div>
+      </div>
+
+      <div id="indicesChartView" class="market-chart-view" style="display:none">
+        <div class="market-header">
+          <button id="indicesBackBtn" class="market-back-btn">← Назад к списку</button>
+          <h2 id="indicesChartTitle"></h2>
+        </div>
+        <div id="indicesChartContainer" class="market-chart-container"></div>
+      </div>
+    </section>
+
+    <!-- ОБЛИГАЦИИ И СТАВКИ -->
+    <section id="rates" class="tab-content">
+      <div class="market-header">
+        <h2>Облигации и ставки</h2>
+        <button id="ratesRefreshBtn" title="Обновить">⟳</button>
+      </div>
+      <div id="ratesMeta" class="market-meta"></div>
+      <div id="ratesCards" class="rates-cards"></div>
+
+      <div class="rates-panel">
+        <div class="rates-panel-title">Ключевая ставка, инфляция и вклады за 2 года</div>
+        <div class="chart-legend">
+          <span><i class="legend-swatch" style="background: var(--series-1)"></i>Ключевая ставка ЦБ</span>
+          <span><i class="legend-swatch" style="background: var(--series-2)"></i>Инфляция, годовая</span>
+          <span><i class="legend-swatch" style="background: var(--series-3)"></i>Вклады (макс. ставка топ-10 банков)</span>
+        </div>
+        <div id="ratesChart" class="chart-wrap"></div>
+      </div>
+
+      <div class="rates-two-col">
+        <div class="rates-panel">
+          <div class="rates-panel-title">Доходность ОФЗ по срокам</div>
+          <div id="ofzCurve" class="chart-wrap"></div>
+          <div class="rates-hint">Сколько годовых платит государство по облигациям разного срока. Пунктир — ключевая ставка.</div>
+        </div>
+
+        <div class="rates-panel">
+          <div class="rates-panel-title">Сколько принесут деньги</div>
+          <div class="calc-form">
+            <div class="field">
+              <label for="calcAmount">Сумма, ₽</label>
+              <input type="number" id="calcAmount" value="100000" min="0" step="1000">
+            </div>
+            <div class="field">
+              <label for="calcTerm">Срок</label>
+              <select id="calcTerm">
+                <option value="3">3 месяца</option>
+                <option value="6">6 месяцев</option>
+                <option value="12" selected>1 год</option>
+                <option value="24">2 года</option>
+                <option value="36">3 года</option>
+              </select>
+            </div>
+          </div>
+          <div id="calcResults" class="calc-results"></div>
+          <div class="rates-hint">Оценка до налогов, без капитализации по вкладу. Ставка вклада — средняя максимальная по 10 крупнейшим банкам; реальные условия зависят от банка и срока.</div>
+        </div>
+      </div>
+
+      <div class="rates-panel">
+        <div class="rates-panel-title">Выпуски ОФЗ</div>
+        <div class="ofz-table-wrap">
+          <table class="ofz-table">
+            <thead>
+              <tr><th>Выпуск</th><th>Погашение</th><th class="num">Цена, % номинала</th><th class="num">Доходность</th><th class="num">Дюрация</th></tr>
+            </thead>
+            <tbody id="ofzTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="ratesError" class="error"></div>
+      <div class="commodities-sources">
+        Источники: ключевая ставка, инфляция и максимальная ставка по вкладам 10 крупнейших банков — официальные данные Банка России (cbr.ru);
+        доходности и цены ОФЗ — официальный API Московской биржи (iss.moex.com), в течение торгового дня.
+        Ставку по вкладам ЦБ публикует раз в декаду, инфляцию — раз в месяц.
+      </div>
+    </section>
+
+    <!-- КАЛЕНДАРЬ СОБЫТИЙ -->
+    <section id="events" class="tab-content">
+      <div class="market-header">
+        <h2>Календарь событий</h2>
+        <button id="eventsRefreshBtn" title="Обновить">⟳</button>
+      </div>
+      <div id="eventsMeta" class="market-meta"></div>
+      <div id="eventsHighlights" class="events-highlights"></div>
+
+      <div id="eventsFilters" class="events-filters"></div>
+
+      <div class="events-layout">
+        <div class="events-side">
+          <div class="rates-panel">
+            <div class="events-month-head">
+              <button type="button" id="eventsPrevMonth" class="weather-week-btn" title="Предыдущий месяц">‹</button>
+              <div id="eventsMonthTitle" class="events-month-title"></div>
+              <button type="button" id="eventsNextMonth" class="weather-week-btn" title="Следующий месяц">›</button>
+            </div>
+            <div id="eventsMonthGrid" class="events-month-grid"></div>
+          </div>
+
+          <div class="rates-panel">
+            <div class="rates-panel-title">Добавить своё событие</div>
+            <form id="customEventForm" class="custom-event-form">
+              <input type="date" id="customEventDate" required>
+              <input type="text" id="customEventTitle" placeholder="Напр. отсечка по дивидендам Сбера" required>
+              <button type="submit">+ Добавить</button>
+            </form>
+            <div class="rates-hint">Например, даты дивидендов российских компаний из их объявлений — они появятся в календаре с пометкой «Моё».</div>
+          </div>
+        </div>
+
+        <div class="rates-panel events-agenda-panel">
+          <div class="events-agenda-head">
+            <div id="eventsAgendaTitle" class="rates-panel-title">Ближайшие события</div>
+            <button type="button" id="eventsShowAll" class="events-link-btn" style="display:none">Показать все</button>
+          </div>
+          <div id="eventsAgenda" class="events-agenda"></div>
+        </div>
+      </div>
+
+      <div id="eventsError" class="error"></div>
+      <div class="commodities-sources">
+        Источники: даты решений по ключевой ставке — официальный календарь Банка России (cbr.ru);
+        отчётности и дивидендные отсечки крупнейших компаний США — официальные календари биржи Nasdaq (на 45 дней вперёд; отсечки появляются после объявления компанией);
+        недельная инфляция — по регулярному графику Росстата (по средам в 19:00 МСК, при праздниках дата может сдвигаться).
+        Открытого официального источника дат дивидендов и отчётностей российских компаний нет — их можно добавить вручную как «Моё» событие.
+      </div>
+    </section>
+
+    <!-- НОВОСТИ РЫНКА -->
+    <section id="marketNews" class="tab-content">
+      <div class="market-header">
+        <h2>Новости рынка</h2>
+        <button id="newsRefreshBtn" title="Обновить">⟳</button>
+      </div>
+      <div id="newsMeta" class="market-meta"></div>
+      <div id="newsFilters" class="events-filters"></div>
+
+      <div class="news-layout">
+        <div id="newsAssets" class="news-assets"></div>
+        <div class="rates-panel news-main-panel">
+          <div class="rates-panel-title">Главное на рынке</div>
+          <div id="newsMain" class="news-main"></div>
+        </div>
+      </div>
+
+      <div id="newsError" class="error"></div>
+      <div class="commodities-sources">
+        Источники новостей: Финам, Прайм, Интерфакс, РБК, ТАСС, Коммерсантъ, Банки.ру, ForkLog (на русском) и Yahoo Finance (новости по американским акциям и криптовалютам, на английском).
+        Цены и изменение за день: криптовалюты — Bybit, российские акции и индекс — Мосбиржа (в реальном времени), остальное — биржевые данные Yahoo Finance.
+        Новости подбираются к активу автоматически по упоминанию в заголовке и анонсе; пометка «рост/снижение» — у новостей о росте или падении (цен, показателей), такие новости показываются первыми. Российские акции — с биржевой задержкой 15 минут.
+      </div>
+    </section>
+
+    <!-- СЫРЬЁ И МЕТАЛЛЫ -->
+    <section id="commodities" class="tab-content">
+      <div id="commoditiesListView">
+        <div class="market-header">
+          <h2>Сырьё и металлы</h2>
+          <button id="commoditiesRefreshBtn" title="Обновить">⟳</button>
+        </div>
+        <div id="commoditiesMeta" class="market-meta"></div>
+        <div id="commoditiesList"></div>
+        <div id="commoditiesError" class="error"></div>
+        <div class="commodities-sources">
+          Источники: спотовые цены драгметаллов и меди — gold-api.com (реальное время, обновление каждые 30 секунд);
+          остальное — официальные котировки фьючерсов бирж COMEX, NYMEX, ICE и CBOT (задержка биржи ~10 минут).
+          Изменение за день — по биржевому фьючерсу. Пересчёт в рубли — по текущему курсу.
+        </div>
+      </div>
+
+      <div id="commoditiesChartView" class="market-chart-view" style="display:none">
+        <div class="market-header">
+          <button id="commoditiesBackBtn" class="market-back-btn">← Назад к списку</button>
+          <h2 id="commoditiesChartTitle"></h2>
+        </div>
+        <div id="commoditiesChartContainer" class="market-chart-container"></div>
+      </div>
+    </section>
+
+    <!-- НАКОПЛЕНИЯ -->
+    <section id="savings" class="tab-content">
+      <h2>Накопления</h2>
+
+      <div id="savingsSummary" class="savings-summary"></div>
+
+      <form id="savingsForm" class="row">
+        <div class="field">
+          <label for="savingsName">Название</label>
+          <input type="text" id="savingsName" placeholder="Напр. Копилка на отпуск" required>
+        </div>
+        <div class="field">
+          <label for="savingsTarget">Целевая сумма</label>
+          <input type="number" id="savingsTarget" min="0" step="any" required>
+        </div>
+        <div class="field">
+          <label for="savingsCurrent">Уже накоплено</label>
+          <input type="number" id="savingsCurrent" min="0" step="any" value="0">
+        </div>
+        <div class="field">
+          <label for="savingsCurrency">Валюта</label>
+          <div class="currency-picker">
+            <input type="text" id="savingsCurrency" placeholder="Напр. USD" autocomplete="off">
+            <button type="button" class="currency-picker-toggle" data-for="savingsCurrency">▾</button>
+            <div class="currency-picker-list" data-for="savingsCurrency"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="savingsDeadline">Срок (необязательно)</label>
+          <input type="date" id="savingsDeadline">
+        </div>
+        <button type="submit">Добавить</button>
+      </form>
+      <div id="savingsFormError" class="error"></div>
+
+      <div id="savingsChart" class="savings-chart"></div>
+
+      <div id="savingsList" class="savings-list"></div>
+    </section>
+
+    <!-- ЕЖЕДНЕВНИК -->
+    <section id="planner" class="tab-content">
+      <div class="planner-header">
+        <h2 id="plannerMonthYear">Ежедневник</h2>
+        <div class="planner-nav">
+          <button id="plannerPrevBtn" title="Предыдущая неделя">‹</button>
+          <button id="plannerNextBtn" title="Следующая неделя">›</button>
+        </div>
+      </div>
+      <form id="deadlineForm" class="row planner-deadline-form">
+        <div class="field grow">
+          <label for="deadlineTaskText">Новое дело с дедлайном</label>
+          <input type="text" id="deadlineTaskText" placeholder="Что нужно сделать?" required>
+        </div>
+        <div class="field">
+          <label for="deadlineTaskDate">Срок</label>
+          <input type="date" id="deadlineTaskDate" required>
+        </div>
+        <button type="submit">Добавить</button>
+      </form>
+
+      <div id="plannerOverdueBlock" class="planner-overdue-block" style="display:none">
+        <h3>⚠️ Просрочено</h3>
+        <div class="planner-overdue-list" id="plannerOverdueList"></div>
+      </div>
+
+      <div class="planner-grid" id="plannerGrid"></div>
+      <div class="planner-someday">
+        <h3>Когда-нибудь</h3>
+        <div class="someday-list" id="somedayList"></div>
+        <input type="text" id="somedayInput" class="planner-day-add" placeholder="+ Добавить задачу">
+      </div>
+    </section>
+
+    <!-- УЧЁБА -->
+    <section id="study" class="tab-content">
+      <div class="market-header">
+        <h2>Учёба</h2>
+        <button id="studyRefreshBtn" title="Обновить">⟳ Обновить</button>
+      </div>
+      <div class="study-channels-block">
+        <div class="study-channels-label">Мои каналы</div>
+        <div id="studyChannelsList" class="study-channels-list"></div>
+        <form id="studyChannelForm" class="study-channel-form">
+          <input type="text" id="studyChannelInput" placeholder="Ссылка на канал, напр. https://t.me/durov" autocomplete="off">
+          <button type="submit">+ Добавить</button>
+        </form>
+        <div id="studyChannelError" class="error"></div>
+      </div>
+      <div id="studyMeta" class="market-meta"></div>
+      <div id="studyList" class="study-list"></div>
+      <div id="studyError" class="error"></div>
+    </section>
+
+    <!-- ПОГОДА -->
+    <section id="weather" class="tab-content">
+      <div class="market-header">
+        <h2>Прогноз погоды</h2>
+        <div class="weather-header-actions">
+          <div class="currency-picker weather-city-picker">
+            <input type="text" id="weatherTabCityInput" placeholder="Выбрать город..." autocomplete="off">
+            <div class="currency-picker-list" id="weatherTabCityResults"></div>
+          </div>
+          <button id="weatherRefreshBtn" title="Обновить">⟳ Обновить</button>
+        </div>
+      </div>
+      <div id="weatherForecastMeta" class="weather-location"></div>
+      <div id="weatherForecastCurrent" class="weather-current"></div>
+
+      <div class="weather-panel">
+        <div class="weather-panel-title">Почасовой прогноз на сутки</div>
+        <div id="weatherHourly"></div>
+      </div>
+
+      <div class="weather-panel">
+        <div class="weather-panel-head">
+          <div class="weather-panel-title">Прогноз по дням</div>
+          <div class="weather-week-controls">
+            <button type="button" id="weatherPrevBtn" class="weather-week-btn" title="Предыдущая неделя">‹</button>
+            <span id="weatherWeekLabel" class="weather-week-label"></span>
+            <button type="button" id="weatherNextBtn" class="weather-week-btn" title="Следующая неделя">›</button>
+          </div>
+        </div>
+        <div id="weatherForecastList" class="weather-forecast-list"></div>
+        <div class="wh-legend">Нажмите на день, чтобы увидеть погоду по часам и подробности</div>
+      </div>
+      <div id="weatherForecastError" class="error"></div>
+    </section>
+
+    <!-- ЗАМЕТКИ -->
+    <section id="notes" class="tab-content">
+      <div class="market-header">
+        <h2>Заметки</h2>
+        <button type="button" id="noteNewBtn">+ Новая заметка</button>
+      </div>
+      <div id="notesGrid" class="notes-grid"></div>
+    </section>
+
+    <!-- НАСТРОЙКИ -->
+    <section id="settings" class="tab-content">
+      <h2>Настройки</h2>
+
+      <div class="settings-block">
+        <h3>Оформление</h3>
+
+        <label class="settings-radio">
+          <input type="radio" name="themeMode" id="themeModeDark" value="dark">
+          <span>🌙 Тёмная</span>
+        </label>
+
+        <label class="settings-radio">
+          <input type="radio" name="themeMode" id="themeModeLight" value="light">
+          <span>☀️ Светлая</span>
+        </label>
+      </div>
+
+      <div class="settings-block">
+        <h3>Дата и часовой пояс</h3>
+
+        <label class="settings-radio">
+          <input type="radio" name="tzMode" id="tzModeAuto" value="auto">
+          <span>Автоматически — по времени этого устройства</span>
+        </label>
+
+        <label class="settings-radio">
+          <input type="radio" name="tzMode" id="tzModeManual" value="manual">
+          <span>Вручную — выбрать город/страну</span>
+        </label>
+
+        <div class="field settings-timezone-field">
+          <label for="timezoneSelect">Часовой пояс</label>
+          <select id="timezoneSelect" disabled></select>
+        </div>
+
+        <div class="settings-preview" id="settingsClockPreview"></div>
+      </div>
+
+      <div class="settings-block">
+        <h3>Погода</h3>
+
+        <label class="settings-radio">
+          <input type="radio" name="weatherMode" id="weatherModeAuto" value="auto">
+          <span>Автоматически — по геопозиции устройства</span>
+        </label>
+
+        <label class="settings-radio">
+          <input type="radio" name="weatherMode" id="weatherModeManual" value="manual">
+          <span>Вручную — выбрать город</span>
+        </label>
+
+        <div class="field settings-timezone-field">
+          <label for="weatherCityInput">Город</label>
+          <div class="currency-picker">
+            <input type="text" id="weatherCityInput" placeholder="Напр. Алматы" autocomplete="off" disabled>
+            <div class="currency-picker-list" id="weatherCityResults"></div>
+          </div>
+        </div>
+
+        <div class="settings-preview" id="settingsWeatherPreview"></div>
+      </div>
+
+      <div class="settings-block">
+        <h3>Уведомления</h3>
+        <label class="settings-radio">
+          <input type="checkbox" id="notificationsToggle">
+          <span>Напоминать о задачах на сегодня и просроченных</span>
+        </label>
+        <div class="settings-block-hint" id="notificationsStatus"></div>
+      </div>
+
+      <div class="settings-block">
+        <h3>Резервная копия</h3>
+        <p class="settings-block-hint">Сохраните все свои данные (накопления, задачи, заметки, избранное, виртуальный портфель, настройки) в один файл — пригодится при смене браузера или компьютера.</p>
+        <div class="settings-backup-actions">
+          <button type="button" id="exportDataBtn">⬇ Экспортировать данные</button>
+          <button type="button" id="importDataBtn">⬆ Импортировать данные</button>
+          <input type="file" id="importDataInput" accept="application/json" hidden>
+        </div>
+        <div class="settings-block-hint" id="backupStatus"></div>
+      </div>
+    </section>
+   </div>
+  </main>
+
+  <div class="day-modal-overlay" id="dayModalOverlay">
+    <div class="day-modal">
+      <div class="day-modal-header">
+        <h3 id="dayModalTitle"></h3>
+        <button type="button" id="dayModalCloseBtn" class="day-modal-close" title="Закрыть">✕</button>
+      </div>
+      <div id="dayModalList" class="day-modal-list"></div>
+      <form id="dayModalForm" class="day-modal-form">
+        <input type="text" id="dayModalInput" placeholder="Добавить дело на этот день..." autocomplete="off">
+        <button type="submit">+ Добавить</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="day-modal-overlay" id="noteModalOverlay">
+    <div class="day-modal note-modal">
+      <div class="day-modal-header">
+        <h3 id="noteModalTitleLabel">Новая заметка</h3>
+        <button type="button" id="noteModalCloseBtn" class="day-modal-close" title="Закрыть">✕</button>
+      </div>
+
+      <input type="text" id="noteTitleInput" class="note-title-input" placeholder="Заголовок заметки">
+      <textarea id="noteTextInput" class="note-text-input" rows="6" placeholder="Текст заметки..."></textarea>
+
+      <div class="note-image-area" id="noteImageArea">
+        <button type="button" id="noteImageBtn" class="note-image-btn">+ Добавить фото</button>
+        <input type="file" id="noteImageInput" accept="image/*" hidden>
+      </div>
+
+      <div class="note-modal-actions">
+        <button type="button" id="noteDeleteBtn" class="note-delete-btn">Удалить</button>
+        <button type="button" id="noteSaveBtn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="day-modal-overlay" id="portfolioResetOverlay">
+    <div class="day-modal portfolio-reset-modal">
+      <div class="day-modal-header">
+        <h3>Начать заново</h3>
+        <button type="button" id="portfolioResetCloseBtn" class="day-modal-close" title="Закрыть">✕</button>
+      </div>
+      <p class="portfolio-reset-text">Все виртуальные активы и история сделок будут удалены. Выберите стартовый капитал:</p>
+      <div class="portfolio-capital-options" id="portfolioCapitalOptions">
+        <button type="button" class="events-chip" data-capital="100000">100 000 ₽</button>
+        <button type="button" class="events-chip active" data-capital="1000000">1 000 000 ₽</button>
+        <button type="button" class="events-chip" data-capital="10000000">10 000 000 ₽</button>
+      </div>
+      <div class="note-modal-actions">
+        <button type="button" id="portfolioResetCancelBtn" class="secondary-btn">Отмена</button>
+        <button type="button" id="portfolioResetConfirmBtn">Начать заново</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="day-modal-overlay" id="weatherDayModalOverlay">
+    <div class="day-modal weather-day-modal">
+      <div class="day-modal-header">
+        <h3 id="weatherDayModalTitle"></h3>
+        <button type="button" id="weatherDayModalCloseBtn" class="day-modal-close" title="Закрыть">✕</button>
+      </div>
+      <div id="weatherDayModalBody"></div>
+    </div>
+  </div>
+</div>
+<script src="study-news.js"></script>
+<script src="stocks-data.js"></script>
+<script src="commodities-data.js"></script>
+<script src="indices-data.js"></script>
+<script src="rates-data.js"></script>
+<script src="events-data.js"></script>
+<script src="news-data.js"></script>
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
