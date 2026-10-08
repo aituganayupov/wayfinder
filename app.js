@@ -87,11 +87,71 @@ let appSettings = loadSettings();
 if (!appSettings.timezoneMode) appSettings.timezoneMode = "auto";
 if (!appSettings.theme) appSettings.theme = "dark";
 
+const SETTINGS_DEFAULTS = {
+  userName: "",
+  startTab: "home",
+  accent: "blue",
+  fontSize: "normal",
+  timeFormat: "24",
+  weekStart: 1,
+  tempUnit: "c",
+  windUnit: "ms",
+  defaultCurrency: "RUB",
+};
+Object.entries(SETTINGS_DEFAULTS).forEach(([key, value]) => {
+  if (appSettings[key] === undefined) appSettings[key] = value;
+});
+
+const ACCENT_COLORS = {
+  blue: "Синий",
+  violet: "Фиолетовый",
+  teal: "Бирюзовый",
+  orange: "Оранжевый",
+  pink: "Розовый",
+};
+
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
 }
 
+// Акцентный цвет и размер шрифта — атрибуты на <html>, цвета для обеих тем заданы в CSS
+function applyAppearance() {
+  const root = document.documentElement;
+  if (appSettings.accent && appSettings.accent !== "blue") root.dataset.accent = appSettings.accent;
+  else delete root.dataset.accent;
+  if (appSettings.fontSize && appSettings.fontSize !== "normal") root.dataset.font = appSettings.fontSize;
+  else delete root.dataset.font;
+}
+
 applyTheme(appSettings.theme);
+applyAppearance();
+
+// «18:05» → по выбранному формату времени
+function fmtHM(hm) {
+  if (!hm || appSettings.timeFormat !== "12") return hm;
+  const [h, m] = hm.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+function windUnitLabel() {
+  return appSettings.windUnit === "kmh" ? "км/ч" : "м/с";
+}
+
+function weatherUnitParams() {
+  return `&wind_speed_unit=${appSettings.windUnit === "kmh" ? "kmh" : "ms"}`
+    + (appSettings.tempUnit === "f" ? "&temperature_unit=fahrenheit" : "");
+}
+
+// Подписи дней недели с учётом выбранного первого дня
+function weekdayHeaders() {
+  const monFirst = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+  return Number(appSettings.weekStart) === 0 ? ["Вс", ...monFirst.slice(0, 6)] : monFirst;
+}
+
+// Сколько пустых клеток перед первым числом месяца
+function monthStartOffset(firstDay) {
+  return (firstDay.getDay() - Number(appSettings.weekStart) + 7) % 7;
+}
 
 const THEME_ICONS = {
   sun: `<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.8 4.8l1.4 1.4M13.8 13.8l1.4 1.4M4.8 15.2l1.4-1.4M13.8 6.2l1.4-1.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`,
@@ -175,6 +235,100 @@ function initSettingsPage() {
 
   darkRadio.addEventListener("change", () => setAppTheme("dark"));
   lightRadio.addEventListener("change", () => setAppTheme("light"));
+
+  // ---- Профиль ----
+  const nameInput = document.getElementById("settingsName");
+  nameInput.value = appSettings.userName || "";
+  nameInput.addEventListener("input", () => {
+    appSettings.userName = nameInput.value.trim();
+    saveSettings(appSettings);
+    renderHomeGreeting();
+  });
+
+  const startTab = document.getElementById("settingsStartTab");
+  startTab.value = appSettings.startTab || "home";
+  startTab.addEventListener("change", () => {
+    appSettings.startTab = startTab.value;
+    saveSettings(appSettings);
+  });
+
+  const currencySelect = document.getElementById("settingsCurrency");
+  currencySelect.value = appSettings.defaultCurrency || "RUB";
+  currencySelect.addEventListener("change", () => {
+    appSettings.defaultCurrency = currencySelect.value;
+    saveSettings(appSettings);
+    const savingsInput = document.getElementById("savingsCurrency");
+    if (savingsInput) savingsInput.value = currencySelect.value;
+  });
+
+  // ---- Акцентный цвет ----
+  const swatches = document.getElementById("settingsAccent");
+  swatches.innerHTML = Object.entries(ACCENT_COLORS).map(([key, label]) => `
+    <button type="button" class="settings-swatch swatch-${key}" data-accent="${key}" title="${label}" aria-label="${label}"></button>
+  `).join("");
+  swatches.addEventListener("click", e => {
+    const btn = e.target.closest("[data-accent]");
+    if (!btn) return;
+    appSettings.accent = btn.dataset.accent;
+    saveSettings(appSettings);
+    applyAppearance();
+    renderSettingsControls();
+  });
+
+  // ---- Переключатели: шрифт, формат времени, неделя, единицы ----
+  document.querySelectorAll(".settings-seg[data-setting]").forEach(seg => {
+    seg.addEventListener("click", e => {
+      const btn = e.target.closest("[data-value]");
+      if (!btn) return;
+      const key = seg.dataset.setting;
+      appSettings[key] = key === "weekStart" ? Number(btn.dataset.value) : btn.dataset.value;
+      saveSettings(appSettings);
+      renderSettingsControls();
+      applySettingChange(key);
+    });
+  });
+
+  document.getElementById("settingsVersion").textContent = appVersionText();
+  renderSettingsControls();
+}
+
+function renderSettingsControls() {
+  document.querySelectorAll(".settings-seg[data-setting]").forEach(seg => {
+    const value = String(appSettings[seg.dataset.setting]);
+    seg.querySelectorAll("[data-value]").forEach(b => b.classList.toggle("active", b.dataset.value === value));
+  });
+  document.querySelectorAll("#settingsAccent [data-accent]").forEach(b => {
+    b.classList.toggle("active", b.dataset.accent === (appSettings.accent || "blue"));
+  });
+}
+
+// Что перерисовать после смены настройки
+function applySettingChange(key) {
+  if (key === "fontSize") {
+    applyAppearance();
+  } else if (key === "timeFormat") {
+    updateSidebarClock();
+    renderPlanner();
+    renderHome();
+    if (weatherData) {
+      renderWeatherCurrent();
+      renderWeatherHourly();
+    }
+  } else if (key === "weekStart") {
+    renderPlanner();
+    renderHome();
+    if (eventsLoaded) renderEvents();
+  } else if (key === "tempUnit" || key === "windUnit") {
+    loadHomeWeather();
+    if (weatherForecastLoaded) loadWeatherForecast();
+  }
+}
+
+function appVersionText() {
+  const script = document.querySelector('script[src*="app.js"]');
+  const match = script ? script.getAttribute("src").match(/v=([^&]+)/) : null;
+  const build = match && match[1] !== "__BUILD__" ? `сборка ${match[1]}` : "копия на этом компьютере";
+  return `Версия 1.6 · ${build}`;
 }
 
 // ---------- Sidebar clock ----------
@@ -186,7 +340,8 @@ function updateSidebarClock() {
   const homeTimeEl = document.getElementById("homeClockTime");
   const homeDateEl = document.getElementById("homeClockDate");
 
-  const timeOpts = { hour: "2-digit", minute: "2-digit", second: "2-digit" };
+  const hour12 = appSettings.timeFormat === "12";
+  const timeOpts = { hour: hour12 ? "numeric" : "2-digit", minute: "2-digit", second: "2-digit", hour12 };
   const dateOpts = { weekday: "long", day: "numeric", month: "long" };
 
   if (appSettings.timezoneMode === "manual" && appSettings.timezone) {
@@ -194,7 +349,7 @@ function updateSidebarClock() {
     dateOpts.timeZone = appSettings.timezone;
   }
 
-  const timeStr = now.toLocaleTimeString("ru-RU", timeOpts);
+  const timeStr = now.toLocaleTimeString(hour12 ? "en-US" : "ru-RU", timeOpts);
   const dateStr = now.toLocaleDateString("ru-RU", dateOpts);
 
   if (timeEl) timeEl.textContent = timeStr;
@@ -232,7 +387,8 @@ function getGreeting() {
 
 function renderHomeGreeting() {
   const el = document.getElementById("homeGreetingText");
-  if (el) el.textContent = `${getGreeting()}! 👋`;
+  const name = (appSettings.userName || "").trim();
+  if (el) el.textContent = `${getGreeting()}${name ? `, ${name}` : ""}! 👋`;
 }
 
 function renderHomeCalendar() {
@@ -243,14 +399,14 @@ function renderHomeCalendar() {
   const year = now.getFullYear();
   const month = now.getMonth();
   const firstDay = new Date(year, month, 1);
-  const startOffset = (firstDay.getDay() + 6) % 7;
+  const startOffset = monthStartOffset(firstDay);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const todayKey = toDateKey(now);
   const allTasks = loadTasks();
   const hasOpenTask = key => allTasks.some(t => taskOccursOn(t, key) && !isTaskDone(t, key));
 
   let html = `<div class="home-calendar-header">${RU_MONTHS[month]} ${year}</div><div class="home-calendar-grid">`;
-  RU_WEEKDAYS_SHORT.forEach(w => { html += `<div class="home-calendar-dow">${w}</div>`; });
+  weekdayHeaders().forEach(w => { html += `<div class="home-calendar-dow">${w}</div>`; });
   for (let i = 0; i < startOffset; i++) html += `<div></div>`;
   for (let d = 1; d <= daysInMonth; d++) {
     const key = toDateKey(new Date(year, month, d));
@@ -281,7 +437,7 @@ function homeTaskRow(task, key) {
   row.title = done ? "Нажмите, чтобы снять отметку" : "Нажмите, чтобы отметить выполненной";
   row.innerHTML = `
     <span class="home-task-check"></span>
-    <span class="home-task-text">${task.time ? `<b>${task.time}</b> ` : ""}${escapeHtml(task.text)}</span>
+    <span class="home-task-text">${task.time ? `<b>${fmtHM(task.time)}</b> ` : ""}${escapeHtml(task.text)}</span>
   `;
   row.addEventListener("click", () => toggleTaskDone(task.id, key));
   return row;
@@ -468,14 +624,14 @@ function formatCityLabel(c) {
 }
 
 function fetchWeatherInto(lat, lon, label, el) {
-  return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&wind_speed_unit=ms`)
+  return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true${weatherUnitParams()}`)
     .then(res => res.json())
     .then(data => {
       const w = data.current_weather;
       if (!w) throw new Error("no data");
       const html = `
-        <div class="home-weather-temp">${Math.round(w.temperature)}°C</div>
-        <div class="home-weather-sub">${label} · ветер ${Math.round(w.windspeed)} м/с</div>
+        <div class="home-weather-temp">${Math.round(w.temperature)}°${appSettings.tempUnit === "f" ? "F" : "C"}</div>
+        <div class="home-weather-sub">${escapeHtml(label)} · ветер ${Math.round(w.windspeed)} ${windUnitLabel()}</div>
       `;
       if (el) el.innerHTML = html;
       return html;
@@ -497,16 +653,19 @@ function resolveWeatherLocation() {
       return;
     }
 
-    const fallback = () => resolve({ lat: 55.75, lon: 37.62, label: "Москва (по умолчанию)" });
+    // Не молчим, почему показана Москва: объясняем причину
+    const fallback = note => resolve({ lat: 55.75, lon: 37.62, label: "Москва (по умолчанию)", note });
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, label: "Ваше местоположение" }),
-        fallback,
+        err => fallback(err && err.code === 1
+          ? "Нет доступа к геопозиции — разрешите её в браузере (значок замка слева от адреса сайта) или выберите город вручную."
+          : "Не удалось определить местоположение — выберите город вручную."),
         { timeout: 5000 }
       );
     } else {
-      fallback();
+      fallback("Браузер не поддерживает геопозицию — выберите город вручную.");
     }
   });
 }
@@ -518,7 +677,12 @@ function loadHomeWeather() {
 
   if (el) el.innerHTML = `<div class="empty-hint">Загрузка погоды...</div>`;
 
-  resolveWeatherLocation().then(({ lat, lon, label }) => {
+  resolveWeatherLocation().then(({ lat, lon, label, note }) => {
+    const noteEl = document.getElementById("settingsWeatherNote");
+    if (noteEl) {
+      noteEl.textContent = note || "";
+      noteEl.hidden = !note;
+    }
     fetchWeatherInto(lat, lon, label, el).then(html => {
       if (previewEl && html) previewEl.innerHTML = html;
     });
@@ -640,16 +804,21 @@ function initNotificationsSettings() {
   if (!toggle) return;
 
   function updateStatus() {
+    status.classList.remove("settings-warning-text");
     if (!("Notification" in window)) {
       status.textContent = "Этот браузер не поддерживает уведомления.";
-    } else if (appSettings.notificationsEnabled && Notification.permission === "denied") {
-      status.textContent = "Уведомления заблокированы в браузере — разрешите их в настройках сайта, чтобы включить.";
+    } else if (Notification.permission === "denied") {
+      toggle.checked = false;
+      status.textContent = "Уведомления заблокированы в браузере. Разрешите их в настройках сайта (значок замка слева от адреса) и включите галочку снова.";
+      status.classList.add("settings-warning-text");
+    } else if (appSettings.notificationsEnabled && Notification.permission === "granted") {
+      status.textContent = "Включено: раз в день напомним о делах на сегодня и просроченных.";
     } else {
-      status.textContent = "";
+      status.textContent = "При включении браузер спросит разрешение на уведомления.";
     }
   }
 
-  toggle.checked = !!appSettings.notificationsEnabled;
+  toggle.checked = !!appSettings.notificationsEnabled && "Notification" in window && Notification.permission === "granted";
   updateStatus();
 
   toggle.addEventListener("change", async () => {
@@ -671,9 +840,8 @@ function initNotificationsSettings() {
       toggle.checked = false;
       appSettings.notificationsEnabled = false;
       saveSettings(appSettings);
-      status.textContent = permission === "denied"
-        ? "Браузер заблокировал уведомления для этого сайта. Разрешите их в настройках сайта (значок замка рядом с адресом) и попробуйте снова."
-        : "Разрешение на уведомления не было предоставлено.";
+      updateStatus();
+      if (permission !== "denied") status.textContent = "Вы закрыли запрос браузера — уведомления не включены.";
       return;
     }
 
@@ -708,20 +876,57 @@ function exportAppData() {
   URL.revokeObjectURL(url);
 }
 
+const BACKUP_LABELS = {
+  savings_items: "цели накоплений",
+  planner_tasks: "дела ежедневника",
+  notes_data: "заметки",
+  custom_events: "свои события календаря",
+  watchlist: "избранное",
+  paper_portfolio: "виртуальный портфель",
+  app_settings: "настройки",
+};
+const BACKUP_LIST_KEYS = ["savings_items", "planner_tasks", "notes_data", "custom_events", "watchlist"];
+
+// Проверка, что файл — действительно резервная копия Wayfinder, а не что-то случайное
+function validateBackup(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return "Это не резервная копия Wayfinder.";
+  const found = BACKUP_KEYS.filter(key => data[key] !== undefined);
+  if (!found.length) return "В файле нет данных Wayfinder — выберите файл wayfinder-backup-….json.";
+  for (const key of found) {
+    if (BACKUP_LIST_KEYS.includes(key) && !Array.isArray(data[key])) return `Файл повреждён: раздел «${BACKUP_LABELS[key]}» в неверном формате.`;
+    if (key === "app_settings" && (typeof data[key] !== "object" || Array.isArray(data[key]))) return "Файл повреждён: настройки в неверном формате.";
+    if (key === "paper_portfolio" && typeof data[key].cash !== "number") return "Файл повреждён: виртуальный портфель в неверном формате.";
+  }
+  return null;
+}
+
 function importAppData(file) {
   const statusEl = document.getElementById("backupStatus");
-  const reader = new FileReader();
+  statusEl.classList.remove("settings-warning-text");
+  const fail = msg => {
+    statusEl.textContent = msg;
+    statusEl.classList.add("settings-warning-text");
+  };
+  if (file.size > 30 * 1024 * 1024) return fail("Файл слишком большой для резервной копии Wayfinder.");
 
+  const reader = new FileReader();
   reader.onload = e => {
     let data;
     try {
       data = JSON.parse(e.target.result);
     } catch {
-      statusEl.textContent = "Не удалось прочитать файл — убедитесь, что это резервная копия Wayfinder.";
+      return fail("Не удалось прочитать файл — убедитесь, что это резервная копия Wayfinder (.json).");
+    }
+    const problem = validateBackup(data);
+    if (problem) return fail(problem);
+
+    const lines = BACKUP_KEYS.filter(key => data[key] !== undefined).map(key =>
+      `• ${BACKUP_LABELS[key]}${Array.isArray(data[key]) ? `: ${data[key].length}` : ""}`);
+    const date = data.exportedAt ? new Date(data.exportedAt).toLocaleString("ru-RU") : "неизвестно";
+    if (!confirm(`Текущие данные будут заменены данными из файла (копия от ${date}):\n${lines.join("\n")}\n\nПродолжить?`)) {
+      statusEl.textContent = "Импорт отменён — данные не изменились.";
       return;
     }
-
-    if (!confirm("Импорт заменит текущие данные сайта на данные из файла. Продолжить?")) return;
 
     BACKUP_KEYS.forEach(key => {
       if (data[key] !== undefined) localStorage.setItem(key, JSON.stringify(data[key]));
@@ -730,8 +935,30 @@ function importAppData(file) {
     statusEl.textContent = "Данные восстановлены. Обновляю страницу...";
     setTimeout(() => location.reload(), 1000);
   };
-
+  reader.onerror = () => fail("Не удалось прочитать файл.");
   reader.readAsText(file);
+}
+
+// Все ключи сайта в браузере — для «Удалить все данные»
+const ALL_STORAGE_KEYS = [...BACKUP_KEYS, "charts_state", "converter_state", "savings_view", "notes_view", "notifications_last_date"];
+
+function initResetData() {
+  const btn = document.getElementById("resetDataBtn");
+  const confirmBox = document.getElementById("resetDataConfirm");
+  btn.addEventListener("click", () => {
+    confirmBox.hidden = false;
+    btn.hidden = true;
+  });
+  document.getElementById("resetDataNoBtn").addEventListener("click", () => {
+    confirmBox.hidden = true;
+    btn.hidden = false;
+  });
+  // Второе подтверждение — системное окно, чтобы случайный клик ничего не удалил
+  document.getElementById("resetDataYesBtn").addEventListener("click", () => {
+    if (!confirm("Последнее предупреждение: удалить ВСЕ данные Wayfinder из этого браузера?")) return;
+    ALL_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
+    location.reload();
+  });
 }
 
 function initBackupSettings() {
@@ -745,7 +972,9 @@ function initBackupSettings() {
   importInput.addEventListener("change", e => {
     const file = e.target.files[0];
     if (file) importAppData(file);
+    importInput.value = ""; // чтобы тот же файл можно было выбрать снова
   });
+  initResetData();
 }
 
 // ---------- Прогноз погоды ----------
@@ -858,7 +1087,7 @@ function formatDuration(seconds) {
 }
 
 function hourLabel(iso) {
-  return iso.slice(11, 16);
+  return fmtHM(iso.slice(11, 16));
 }
 
 function parseLocalDate(dateStr) {
@@ -898,8 +1127,8 @@ function renderWeatherCurrent() {
     </div>
     <div class="wc-stats">
       ${weatherStat("Ветер",
-        `${windArrow(c.wind_direction_10m)} ${Math.round(c.wind_speed_10m)} м/с, ${windDirLabel(c.wind_direction_10m)}`,
-        `порывы до ${Math.round(c.wind_gusts_10m)} м/с`)}
+        `${windArrow(c.wind_direction_10m)} ${Math.round(c.wind_speed_10m)} ${windUnitLabel()}, ${windDirLabel(c.wind_direction_10m)}`,
+        `порывы до ${Math.round(c.wind_gusts_10m)} ${windUnitLabel()}`)}
       ${weatherStat("Давление", `${hPaToMmHg(c.surface_pressure)} мм рт. ст.`, "")}
       ${weatherStat("Влажность", `${c.relative_humidity_2m}%`, `облачность ${c.cloud_cover}%`)}
       ${weatherStat("УФ-индекс", `${Math.round(d.uv_index_max[0])} · ${uvLevel(d.uv_index_max[0])}`, "максимум за день")}
@@ -961,7 +1190,7 @@ function renderWeatherHourly() {
         <div class="wh-row" style="${cols}">${wind}</div>
       </div>
     </div>
-    <div class="wh-legend">Ряды снизу: вероятность осадков, % · ветер, м/с (стрелка — куда дует)</div>
+    <div class="wh-legend">Ряды снизу: вероятность осадков, % · ветер, ${windUnitLabel()} (стрелка — куда дует)</div>
   `;
 }
 
@@ -994,7 +1223,7 @@ function renderWeatherWeek() {
         <span class="weather-day-max">${formatTemp(daily.temperature_2m_max[i])}</span>
         <span class="weather-day-min">${formatTemp(daily.temperature_2m_min[i])}</span>
       </div>
-      <div class="weather-day-extra">${windArrow(daily.wind_direction_10m_dominant[i])} ${Math.round(daily.wind_speed_10m_max[i])} м/с</div>
+      <div class="weather-day-extra">${windArrow(daily.wind_direction_10m_dominant[i])} ${Math.round(daily.wind_speed_10m_max[i])} ${windUnitLabel()}</div>
       <div class="weather-day-precip">${daily.precipitation_probability_max[i]}%${precipMm > 0 ? ` · ${precipMm} мм` : ""}</div>
     `;
     card.addEventListener("click", () => openWeatherDayModal(i));
@@ -1038,10 +1267,10 @@ async function loadWeatherForecast() {
 
   try {
     const loc = await resolveWeatherLocation();
-    metaEl.textContent = loc.label;
+    metaEl.textContent = loc.note ? `${loc.label} — ${loc.note}` : loc.label;
 
     const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}`
-      + "&timezone=auto&forecast_days=16&wind_speed_unit=ms"
+      + "&timezone=auto&forecast_days=16" + weatherUnitParams()
       + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,cloud_cover,visibility,is_day"
       + "&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,relative_humidity_2m,surface_pressure,is_day"
       + "&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,uv_index_max,sunrise,sunset,daylight_duration";
@@ -1123,8 +1352,8 @@ function openWeatherDayModal(index) {
     <div class="weather-day-modal-grid">
       ${stat("Ощущается", `${formatTemp(daily.apparent_temperature_max[index])} / ${formatTemp(daily.apparent_temperature_min[index])}`)}
       ${stat("Осадки", `${daily.precipitation_probability_max[index]}% · ${daily.precipitation_sum[index]} мм`)}
-      ${stat("Ветер", `${windArrow(daily.wind_direction_10m_dominant[index])} до ${Math.round(daily.wind_speed_10m_max[index])} м/с, ${windDirLabel(daily.wind_direction_10m_dominant[index])}`)}
-      ${stat("Порывы", `до ${Math.round(daily.wind_gusts_10m_max[index])} м/с`)}
+      ${stat("Ветер", `${windArrow(daily.wind_direction_10m_dominant[index])} до ${Math.round(daily.wind_speed_10m_max[index])} ${windUnitLabel()}, ${windDirLabel(daily.wind_direction_10m_dominant[index])}`)}
+      ${stat("Порывы", `до ${Math.round(daily.wind_gusts_10m_max[index])} ${windUnitLabel()}`)}
       ${stat("Влажность", `${humidity}%`)}
       ${stat("Давление", `${pressure} мм рт. ст.`)}
       ${stat("УФ-индекс", `${Math.round(daily.uv_index_max[index])} · ${uvLevel(daily.uv_index_max[index])}`)}
@@ -1316,7 +1545,8 @@ function toUSD(amount, currency) {
 
 function populateCurrencySelects() {
   const savingsInput = document.getElementById("savingsCurrency");
-  if (!savingsInput.value) savingsInput.value = currencyList.includes("RUB") ? "RUB" : currencyList[0];
+  const preferred = appSettings.defaultCurrency || "RUB";
+  if (!savingsInput.value) savingsInput.value = currencyList.includes(preferred) ? preferred : currencyList[0];
   setupCurrencyArrowCycle(savingsInput);
   setupCurrencyPicker(savingsInput);
 }
@@ -2448,9 +2678,8 @@ function shiftDateKey(key, days) {
 
 function startOfWeek(date) {
   const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
+  // Первый день недели — из настроек (понедельник или воскресенье)
+  d.setDate(d.getDate() - ((d.getDay() - Number(appSettings.weekStart) + 7) % 7));
   d.setHours(0, 0, 0, 0);
   return d;
 }
@@ -2571,7 +2800,7 @@ function createTaskEl(task, options = {}) {
   el.innerHTML = `
     <button type="button" class="planner-task-check" title="${done ? "Снять отметку" : "Отметить выполненной"}"></button>
     <div class="planner-task-body">
-      <span class="planner-task-text">${task.time ? `<span class="planner-task-time">${task.time}</span>` : ""}${escapeHtml(task.text)}</span>
+      <span class="planner-task-text">${task.time ? `<span class="planner-task-time">${fmtHM(task.time)}</span>` : ""}${escapeHtml(task.text)}</span>
       ${meta.join("")}
     </div>
     <div class="planner-task-tools">
@@ -4155,6 +4384,13 @@ function niceTop(value, step) {
   return Math.ceil(value / step) * step;
 }
 
+// Координаты курсора внутри SVG-графика (с учётом масштаба «Размер шрифта» в настройках)
+function svgPointer(svg, e, width) {
+  const rect = svg.getBoundingClientRect();
+  const scale = width / rect.width;
+  return { x: (e.clientX - rect.left) * scale, y: (e.clientY - rect.top) * scale };
+}
+
 function positionTooltip(tooltip, wrap, px, py) {
   const w = tooltip.offsetWidth;
   const left = px + 14 + w > wrap.clientWidth ? px - 14 - w : px + 14;
@@ -4265,8 +4501,8 @@ function renderRatesChart() {
   const hit = el.querySelector(".chart-hit");
 
   hit.addEventListener("pointermove", e => {
-    const rect = svg.getBoundingClientRect();
-    const px = Math.min(Math.max(e.clientX - rect.left, m.l), W - m.r);
+    const pt = svgPointer(svg, e, W);
+    const px = Math.min(Math.max(pt.x, m.l), W - m.r);
     const t = start + ((px - m.l) / (W - m.l - m.r)) * (end - start);
     cross.setAttribute("x1", px);
     cross.setAttribute("x2", px);
@@ -4279,7 +4515,7 @@ function renderRatesChart() {
     }).join("");
     tooltip.innerHTML = `<div class="chart-tooltip-title">${date.getDate()} ${RU_MONTHS_GENITIVE[date.getMonth()]} ${date.getFullYear()}</div>${rows}`;
     tooltip.style.display = "block";
-    positionTooltip(tooltip, el, px, e.clientY - rect.top);
+    positionTooltip(tooltip, el, px, pt.y);
   });
   hit.addEventListener("pointerleave", () => {
     cross.style.display = "none";
@@ -4337,8 +4573,7 @@ function renderOfzCurve() {
   const tooltip = el.querySelector(".chart-tooltip");
   const hit = el.querySelector(".chart-hit");
   hit.addEventListener("pointermove", e => {
-    const rect = svg.getBoundingClientRect();
-    const px = e.clientX - rect.left;
+    const px = svgPointer(svg, e, W).x;
     const i = Math.round(((px - m.l) / (W - m.l - m.r)) * (curve.length - 1));
     const p = curve[Math.min(Math.max(i, 0), curve.length - 1)];
     tooltip.innerHTML = `<div class="chart-tooltip-title">ОФЗ на ${OFZ_TERM_LONG[p.years] || p.years + " лет"}</div><div class="chart-tooltip-row">Доходность<b>${formatPct(p.value)}</b></div>`;
@@ -4638,10 +4873,10 @@ function renderEventsMonth() {
   });
 
   const todayKey = toDateKey(new Date());
-  const offset = (new Date(year, month, 1).getDay() + 6) % 7;
+  const offset = monthStartOffset(new Date(year, month, 1));
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  let html = RU_WEEKDAYS_SHORT.map(w => `<div class="events-dow">${w}</div>`).join("");
+  let html = weekdayHeaders().map(w => `<div class="events-dow">${w}</div>`).join("");
   for (let i = 0; i < offset; i++) html += `<div></div>`;
   for (let d = 1; d <= daysInMonth; d++) {
     const key = toDateKey(new Date(year, month, d));
@@ -6038,8 +6273,8 @@ function drawAssetChart(el, series, period) {
   const hit = el.querySelector(".chart-hit");
 
   hit.addEventListener("pointermove", e => {
-    const rect = svg.getBoundingClientRect();
-    let px = Math.min(Math.max(e.clientX - rect.left, m.l), W - m.r);
+    const pt = svgPointer(svg, e, W);
+    let px = Math.min(Math.max(pt.x, m.l), W - m.r);
     const frac = (px - m.l) / plotW;
     const t = tMin + frac * (tMax - tMin);
     const rows = [];
@@ -6076,7 +6311,7 @@ function drawAssetChart(el, series, period) {
     cross.style.display = "";
     tooltip.innerHTML = `<div class="chart-tooltip-title">${title}</div>${rows.join("")}`;
     tooltip.style.display = "block";
-    positionTooltip(tooltip, el, px, e.clientY - rect.top);
+    positionTooltip(tooltip, el, px, pt.y);
   });
   hit.addEventListener("pointerleave", () => {
     cross.style.display = "none";
@@ -6921,6 +7156,13 @@ function refreshHomeWatchlist() {
   if (watched.length) fetchAssetQuotes(watched).then(renderHomeMarket);
 }
 refreshHomeWatchlist();
+
+// Стартовая вкладка из настроек
+if (appSettings.startTab && appSettings.startTab !== "home") {
+  const startBtn = document.querySelector(`.tab-btn[data-tab="${appSettings.startTab}"]`);
+  if (startBtn) startBtn.click();
+}
+
 setInterval(() => {
   if (document.getElementById("home").classList.contains("active")) refreshHomeWatchlist();
 }, 60000);

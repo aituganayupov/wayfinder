@@ -705,21 +705,74 @@
       <h2>Настройки</h2>
 
       <div class="settings-block">
+        <h3>Профиль</h3>
+        <div class="settings-row">
+          <label for="settingsName">Ваше имя</label>
+          <input type="text" id="settingsName" placeholder="Напр. Айтуган" maxlength="30" autocomplete="off">
+        </div>
+        <div class="settings-block-hint">На главной будет «Добрый день, …!»</div>
+        <div class="settings-row">
+          <label for="settingsStartTab">Открывать при входе</label>
+          <select id="settingsStartTab">
+            <option value="home">Главная</option>
+            <option value="watchlist">Избранное</option>
+            <option value="planner">Ежедневник</option>
+            <option value="savings">Накопления</option>
+            <option value="notes">Заметки</option>
+            <option value="weather">Погода</option>
+            <option value="market">Криптовалюта</option>
+            <option value="portfolio">Портфель</option>
+            <option value="charts">Графики</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-block">
         <h3>Оформление</h3>
 
         <label class="settings-radio">
           <input type="radio" name="themeMode" id="themeModeDark" value="dark">
-          <span>🌙 Тёмная</span>
+          <span>Тёмная тема</span>
         </label>
 
         <label class="settings-radio">
           <input type="radio" name="themeMode" id="themeModeLight" value="light">
-          <span>☀️ Светлая</span>
+          <span>Светлая тема</span>
         </label>
+
+        <div class="settings-row">
+          <span class="settings-row-label">Акцентный цвет</span>
+          <div id="settingsAccent" class="settings-swatches"></div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-row-label">Размер шрифта</span>
+          <div class="settings-seg" data-setting="fontSize">
+            <button type="button" data-value="small">Маленький</button>
+            <button type="button" data-value="normal">Обычный</button>
+            <button type="button" data-value="large">Крупный</button>
+          </div>
+        </div>
       </div>
 
       <div class="settings-block">
-        <h3>Дата и часовой пояс</h3>
+        <h3>Дата и время</h3>
+
+        <div class="settings-row">
+          <span class="settings-row-label">Формат времени</span>
+          <div class="settings-seg" data-setting="timeFormat">
+            <button type="button" data-value="24">24 часа</button>
+            <button type="button" data-value="12">12 часов (AM/PM)</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-row-label">Первый день недели</span>
+          <div class="settings-seg" data-setting="weekStart">
+            <button type="button" data-value="1">Понедельник</button>
+            <button type="button" data-value="0">Воскресенье</button>
+          </div>
+        </div>
+
+        <div class="settings-subtitle">Часовой пояс</div>
 
         <label class="settings-radio">
           <input type="radio" name="tzMode" id="tzModeAuto" value="auto">
@@ -760,7 +813,42 @@
           </div>
         </div>
 
+        <div id="settingsWeatherNote" class="settings-warning" hidden></div>
+
+        <div class="settings-row">
+          <span class="settings-row-label">Температура</span>
+          <div class="settings-seg" data-setting="tempUnit">
+            <button type="button" data-value="c">°C</button>
+            <button type="button" data-value="f">°F</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-row-label">Скорость ветра</span>
+          <div class="settings-seg" data-setting="windUnit">
+            <button type="button" data-value="ms">м/с</button>
+            <button type="button" data-value="kmh">км/ч</button>
+          </div>
+        </div>
+
         <div class="settings-preview" id="settingsWeatherPreview"></div>
+      </div>
+
+      <div class="settings-block">
+        <h3>Финансы</h3>
+        <div class="settings-row">
+          <label for="settingsCurrency">Валюта по умолчанию</label>
+          <select id="settingsCurrency">
+            <option value="RUB">RUB — рубль</option>
+            <option value="USD">USD — доллар США</option>
+            <option value="EUR">EUR — евро</option>
+            <option value="CNY">CNY — юань</option>
+            <option value="KZT">KZT — тенге</option>
+            <option value="GBP">GBP — фунт</option>
+            <option value="TRY">TRY — лира</option>
+            <option value="AED">AED — дирхам</option>
+          </select>
+        </div>
+        <div class="settings-block-hint">Сразу подставляется в новых целях «Накоплений».</div>
       </div>
 
       <div class="settings-block">
@@ -778,9 +866,32 @@
         <div class="settings-backup-actions">
           <button type="button" id="exportDataBtn">⬇ Экспортировать данные</button>
           <button type="button" id="importDataBtn">⬆ Импортировать данные</button>
-          <input type="file" id="importDataInput" accept="application/json" hidden>
+          <input type="file" id="importDataInput" accept="application/json,.json" hidden>
         </div>
         <div class="settings-block-hint" id="backupStatus"></div>
+      </div>
+
+      <div class="settings-block">
+        <h3>О сайте</h3>
+        <div class="settings-about">
+          <div class="settings-about-logo">Wayfinder</div>
+          <div class="settings-block-hint" id="settingsVersion"></div>
+        </div>
+        <p class="settings-block-hint">Личный помощник: финансы, накопления, ежедневник, заметки и погода в одном месте. Все ваши данные хранятся только в этом браузере.</p>
+        <a class="settings-link" href="https://github.com/aituganayupov/wayfinder/issues" target="_blank" rel="noopener noreferrer">Сообщить о проблеме или предложить идею →</a>
+      </div>
+
+      <div class="settings-block settings-danger">
+        <h3>Удалить все данные</h3>
+        <p class="settings-block-hint">Удалит накопления, задачи, заметки, избранное, портфель и настройки из этого браузера. Сначала можно скачать резервную копию выше.</p>
+        <button type="button" id="resetDataBtn" class="settings-danger-btn">Удалить все данные</button>
+        <div id="resetDataConfirm" class="settings-danger-confirm" hidden>
+          <span>Точно удалить всё? Вернуть данные можно будет только из резервной копии.</span>
+          <div class="settings-danger-actions">
+            <button type="button" id="resetDataYesBtn" class="settings-danger-btn solid">Да, удалить навсегда</button>
+            <button type="button" id="resetDataNoBtn" class="secondary-btn">Отмена</button>
+          </div>
+        </div>
       </div>
     </section>
    </div>

@@ -44,6 +44,22 @@
   --cat-personal: #d98a00;
 }
 
+/* Акцентный цвет из настроек: свой оттенок для тёмной и светлой темы */
+:root[data-accent="violet"] { --accent: #9b7bff; --accent-hover: #8565f0; }
+:root[data-accent="teal"] { --accent: #22b5a6; --accent-hover: #1a9a8d; }
+:root[data-accent="orange"] { --accent: #f0883e; --accent-hover: #d97326; }
+:root[data-accent="pink"] { --accent: #ef5f99; --accent-hover: #d94683; }
+:root[data-theme="light"][data-accent="violet"] { --accent: #7350e0; --accent-hover: #5f3dc9; }
+:root[data-theme="light"][data-accent="teal"] { --accent: #0f8a7e; --accent-hover: #0b7268; }
+:root[data-theme="light"][data-accent="orange"] { --accent: #d4651a; --accent-hover: #b85512; }
+:root[data-theme="light"][data-accent="pink"] { --accent: #d63a7b; --accent-hover: #bb2b67; }
+
+/* Размер шрифта из настроек: масштаб основной области и окон */
+:root[data-font="small"] .content,
+:root[data-font="small"] .day-modal { zoom: 0.9; }
+:root[data-font="large"] .content,
+:root[data-font="large"] .day-modal { zoom: 1.12; }
+
 * { box-sizing: border-box; }
 
 body {
@@ -532,7 +548,7 @@ button:hover { background: var(--accent-hover); }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 20px 22px;
-  max-width: 480px;
+  max-width: 560px;
   margin-bottom: 16px;
 }
 
@@ -594,9 +610,175 @@ button:hover { background: var(--accent-hover); }
   width: 100%;
 }
 
-.settings-timezone-field select:disabled {
-  opacity: 0.5;
+/* Неактивные поля — заметно серые и недоступные */
+.settings-block select:disabled,
+.settings-block input:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
+  background: var(--surface-2);
+  filter: grayscale(1);
+}
+.settings-timezone-field:has(:disabled) label {
+  opacity: 0.45;
+}
+
+.settings-subtitle {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 18px 0 2px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 8px 0;
+}
+.settings-row > label,
+.settings-row-label {
+  font-size: 14px;
+  color: var(--text);
+}
+.settings-row input[type="text"],
+.settings-row select {
+  min-width: 0;
+  flex: 0 1 230px;
+}
+
+.settings-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.settings-seg button {
+  width: auto;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 8px;
+}
+.settings-seg button:hover {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  color: var(--text);
+}
+.settings-seg button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.settings-swatches {
+  display: flex;
+  gap: 8px;
+}
+.settings-swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.settings-swatch:hover {
+  transform: scale(1.1);
+}
+.settings-swatch.active {
+  box-shadow: 0 0 0 2px var(--text);
+}
+.swatch-blue, .swatch-blue:hover { background: #5b8cff; }
+.swatch-violet, .swatch-violet:hover { background: #9b7bff; }
+.swatch-teal, .swatch-teal:hover { background: #22b5a6; }
+.swatch-orange, .swatch-orange:hover { background: #f0883e; }
+.swatch-pink, .swatch-pink:hover { background: #ef5f99; }
+
+.settings-warning {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.45;
+  color: #d9a441;
+  background: rgba(217, 164, 65, 0.12);
+  border: 1px solid rgba(217, 164, 65, 0.35);
+}
+.settings-warning[hidden] {
+  display: none;
+}
+.settings-warning-text {
+  color: var(--danger) !important;
+}
+
+.settings-about {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.settings-about-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+}
+.settings-about .settings-block-hint {
+  margin-top: 0;
+}
+.settings-link {
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.settings-link:hover {
+  text-decoration: underline;
+}
+
+.settings-danger {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+}
+.settings-danger h3 {
+  color: var(--danger);
+}
+.settings-danger-btn {
+  width: auto;
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 16px;
+}
+.settings-danger-btn:hover {
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
+}
+.settings-danger-btn.solid {
+  background: var(--danger);
+  color: #fff;
+}
+.settings-danger-btn.solid:hover {
+  background: color-mix(in srgb, var(--danger) 85%, #000);
+}
+.settings-danger-btn[hidden],
+.settings-danger-confirm[hidden] {
+  display: none;
+}
+.settings-danger-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--danger);
+}
+.settings-danger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .settings-preview {
