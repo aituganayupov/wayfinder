@@ -114,11 +114,24 @@ function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
 }
 
+// Дополнительные цвета — в окошке под кружком «+»
+const EXTRA_ACCENTS = [
+  ["#ef4444", "Красный"], ["#fb7185", "Коралловый"], ["#d946ef", "Фуксия"], ["#a855f7", "Пурпурный"],
+  ["#6366f1", "Индиго"], ["#38bdf8", "Голубой"], ["#06b6d4", "Циан"], ["#10b981", "Изумрудный"],
+  ["#84cc16", "Лаймовый"], ["#eab308", "Золотой"], ["#b07a4f", "Карамельный"], ["#94a3b8", "Графитовый"],
+];
+
 // Акцентный цвет и размер шрифта — атрибуты на <html>, цвета для обеих тем заданы в CSS
 function applyAppearance() {
   const root = document.documentElement;
-  if (appSettings.accent && appSettings.accent !== "blue") root.dataset.accent = appSettings.accent;
-  else delete root.dataset.accent;
+  if (appSettings.accent === "custom" && appSettings.accentCustom) {
+    root.dataset.accent = "custom";
+    root.style.setProperty("--accent-custom", appSettings.accentCustom);
+  } else {
+    root.style.removeProperty("--accent-custom");
+    if (appSettings.accent && appSettings.accent !== "blue") root.dataset.accent = appSettings.accent;
+    else delete root.dataset.accent;
+  }
   if (appSettings.fontSize && appSettings.fontSize !== "normal") root.dataset.font = appSettings.fontSize;
   else delete root.dataset.font;
 }
@@ -265,14 +278,62 @@ function initSettingsPage() {
   const swatches = document.getElementById("settingsAccent");
   swatches.innerHTML = Object.entries(ACCENT_COLORS).map(([key, label]) => `
     <button type="button" class="settings-swatch swatch-${key}" data-accent="${key}" title="${label}" aria-label="${label}"></button>
-  `).join("");
+  `).join("") + `
+    <div class="settings-more-wrap">
+      <button type="button" class="settings-swatch swatch-more" id="accentMoreBtn" title="Другие цвета" aria-label="Другие цвета" aria-expanded="false"><span>+</span></button>
+      <div class="settings-more-pop" id="accentMorePop" hidden>
+        <div class="settings-more-title">Другие цвета</div>
+        <div class="settings-more-grid">
+          ${EXTRA_ACCENTS.map(([hex, label]) => `
+            <button type="button" class="settings-swatch" data-custom="${hex}" title="${label}" aria-label="${label}" style="background:${hex}"></button>
+          `).join("")}
+        </div>
+        <label class="settings-more-custom">
+          <span>Свой цвет</span>
+          <input type="color" id="accentCustomInput" value="${appSettings.accentCustom || "#5b8cff"}">
+        </label>
+      </div>
+    </div>
+  `;
+
+  const morePop = document.getElementById("accentMorePop");
+  const moreBtn = document.getElementById("accentMoreBtn");
+  const setPopOpen = open => {
+    morePop.hidden = !open;
+    moreBtn.setAttribute("aria-expanded", String(open));
+  };
+  const chooseCustom = hex => {
+    appSettings.accent = "custom";
+    appSettings.accentCustom = hex;
+    saveSettings(appSettings);
+    applyAppearance();
+    renderSettingsControls();
+  };
+
   swatches.addEventListener("click", e => {
+    if (e.target.closest("#accentMoreBtn")) {
+      setPopOpen(morePop.hidden);
+      return;
+    }
+    const custom = e.target.closest("[data-custom]");
+    if (custom) {
+      chooseCustom(custom.dataset.custom);
+      document.getElementById("accentCustomInput").value = custom.dataset.custom;
+      setPopOpen(false);
+      return;
+    }
     const btn = e.target.closest("[data-accent]");
     if (!btn) return;
     appSettings.accent = btn.dataset.accent;
     saveSettings(appSettings);
     applyAppearance();
     renderSettingsControls();
+    setPopOpen(false);
+  });
+  // Пипетка: цвет меняется сразу, пока двигаете
+  document.getElementById("accentCustomInput").addEventListener("input", e => chooseCustom(e.target.value));
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".settings-more-wrap")) setPopOpen(false);
   });
 
   // ---- Переключатели: шрифт, формат времени, неделя, единицы ----
@@ -299,6 +360,17 @@ function renderSettingsControls() {
   });
   document.querySelectorAll("#settingsAccent [data-accent]").forEach(b => {
     b.classList.toggle("active", b.dataset.accent === (appSettings.accent || "blue"));
+  });
+  // Кружок «+» показывает выбранный дополнительный цвет
+  const isCustom = appSettings.accent === "custom" && appSettings.accentCustom;
+  const moreBtn = document.getElementById("accentMoreBtn");
+  if (moreBtn) {
+    moreBtn.classList.toggle("active", !!isCustom);
+    moreBtn.classList.toggle("has-color", !!isCustom);
+    moreBtn.style.background = isCustom ? appSettings.accentCustom : "";
+  }
+  document.querySelectorAll("#settingsAccent [data-custom]").forEach(b => {
+    b.classList.toggle("active", !!isCustom && b.dataset.custom === appSettings.accentCustom);
   });
 }
 
