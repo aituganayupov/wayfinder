@@ -1537,6 +1537,10 @@ tabBtns.forEach(btn => {
     }
 
     document.getElementById("financeFlyout").classList.remove("open");
+
+    // Вкладка запоминается в адресе (#planner) — после обновления страницы откроется она же
+    const hash = btn.dataset.tab === "home" ? "" : `#${btn.dataset.tab}`;
+    if (location.hash !== hash) history.replaceState(null, "", `${location.pathname}${location.search}${hash}`);
   });
 });
 
@@ -7229,11 +7233,16 @@ function refreshHomeWatchlist() {
 }
 refreshHomeWatchlist();
 
-// Стартовая вкладка из настроек
-if (appSettings.startTab && appSettings.startTab !== "home") {
-  const startBtn = document.querySelector(`.tab-btn[data-tab="${appSettings.startTab}"]`);
-  if (startBtn) startBtn.click();
-}
+// После обновления страницы — та же вкладка (из адреса); при новом входе — стартовая из настроек
+(() => {
+  const fromHash = location.hash.slice(1);
+  const hashBtn = fromHash && document.querySelector(`.tab-btn[data-tab="${CSS.escape(fromHash)}"]`);
+  const tab = hashBtn ? fromHash : appSettings.startTab;
+  if (tab && tab !== "home") {
+    const btn = document.querySelector(`.tab-btn[data-tab="${CSS.escape(tab)}"]`);
+    if (btn) btn.click();
+  }
+})();
 
 setInterval(() => {
   if (document.getElementById("home").classList.contains("active")) refreshHomeWatchlist();
