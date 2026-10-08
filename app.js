@@ -246,7 +246,8 @@ function renderHomeCalendar() {
   const startOffset = (firstDay.getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const todayKey = toDateKey(now);
-  const taskDates = new Set(loadTasks().filter(t => t.date).map(t => t.date));
+  const allTasks = loadTasks();
+  const hasOpenTask = key => allTasks.some(t => taskOccursOn(t, key) && !isTaskDone(t, key));
 
   let html = `<div class="home-calendar-header">${RU_MONTHS[month]} ${year}</div><div class="home-calendar-grid">`;
   RU_WEEKDAYS_SHORT.forEach(w => { html += `<div class="home-calendar-dow">${w}</div>`; });
@@ -255,7 +256,7 @@ function renderHomeCalendar() {
     const key = toDateKey(new Date(year, month, d));
     const classes = ["home-calendar-day"];
     if (key === todayKey) classes.push("today");
-    if (taskDates.has(key)) classes.push("has-task");
+    if (hasOpenTask(key)) classes.push("has-task");
     html += `<div class="${classes.join(" ")}" data-date="${key}">${d}</div>`;
   }
   html += `</div>`;
@@ -272,9 +273,23 @@ function formatDayModalTitle(dateKey) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+// Строка дела на главной и в окне дня: клик отмечает выполненным (и снимает отметку)
+function homeTaskRow(task, key) {
+  const done = isTaskDone(task, key);
+  const row = document.createElement("div");
+  row.className = `home-list-item home-task cat-${task.category || "normal"}${done ? " done" : ""}`;
+  row.title = done ? "Нажмите, чтобы снять отметку" : "Нажмите, чтобы отметить выполненной";
+  row.innerHTML = `
+    <span class="home-task-check"></span>
+    <span class="home-task-text">${task.time ? `<b>${task.time}</b> ` : ""}${escapeHtml(task.text)}</span>
+  `;
+  row.addEventListener("click", () => toggleTaskDone(task.id, key));
+  return row;
+}
+
 function renderDayModalList() {
   const listEl = document.getElementById("dayModalList");
-  const tasks = loadTasks().filter(t => t.date === dayModalDate);
+  const tasks = tasksForDate(loadTasks(), dayModalDate);
 
   if (tasks.length === 0) {
     listEl.innerHTML = `<div class="empty-hint">На этот день пока ничего не запланировано</div>`;
@@ -282,19 +297,7 @@ function renderDayModalList() {
   }
 
   listEl.innerHTML = "";
-  tasks.forEach(task => {
-    const row = document.createElement("div");
-    row.className = "home-list-item";
-    row.title = "Нажмите, чтобы отметить выполненной";
-    row.innerHTML = `<span>${escapeHtml(task.text)}</span>`;
-    row.addEventListener("click", () => {
-      saveTasks(loadTasks().filter(t => t.id !== task.id));
-      renderDayModalList();
-      renderHome();
-      renderPlanner();
-    });
-    listEl.appendChild(row);
-  });
+  tasks.forEach(task => listEl.appendChild(homeTaskRow(task, dayModalDate)));
 }
 
 function openDayModal(dateKey) {
@@ -326,13 +329,11 @@ document.addEventListener("keydown", e => {
 document.getElementById("dayModalForm").addEventListener("submit", e => {
   e.preventDefault();
   const input = document.getElementById("dayModalInput");
-  const text = input.value.trim();
-  if (!text || !dayModalDate) return;
-  addTask(text, dayModalDate);
+  if (!input.value.trim() || !dayModalDate) return;
+  const { text, time } = parseTaskInput(input.value);
+  addTask(text, dayModalDate, time ? { time } : {});
   input.value = "";
-  renderDayModalList();
-  renderHome();
-  renderPlanner();
+  refreshTaskViews();
 });
 
 function renderHomeToday() {
@@ -340,7 +341,7 @@ function renderHomeToday() {
   if (!el) return;
 
   const todayKey = toDateKey(new Date());
-  const tasks = loadTasks().filter(t => t.date === todayKey);
+  const tasks = tasksForDate(loadTasks(), todayKey);
   el.innerHTML = "";
 
   if (tasks.length === 0) {
@@ -348,19 +349,7 @@ function renderHomeToday() {
     return;
   }
 
-  tasks.forEach(task => {
-    const row = document.createElement("div");
-    row.className = "home-list-item";
-    row.title = "Нажмите, чтобы отметить выполненной";
-    row.innerHTML = `<span>${escapeHtml(task.text)}</span>`;
-    row.addEventListener("click", () => {
-      const updated = loadTasks().filter(t => t.id !== task.id);
-      saveTasks(updated);
-      renderHome();
-      renderPlanner();
-    });
-    el.appendChild(row);
-  });
+  tasks.forEach(task => el.appendChild(homeTaskRow(task, todayKey)));
 }
 
 function renderHomeDeadlines() {
@@ -369,8 +358,8 @@ function renderHomeDeadlines() {
 
   const todayKey = toDateKey(new Date());
   const tasks = loadTasks()
-    .filter(t => t.date && t.date >= todayKey)
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .filter(t => t.date && t.date >= todayKey && !isRepeating(t) && !t.completed)
+    .sort((a, b) => a.date.localeCompare(b.date) || byTaskTime(a, b))
     .slice(0, 5);
 
   el.innerHTML = "";
@@ -631,9 +620,9 @@ function checkDeadlineNotifications() {
   const todayKey = toDateKey(new Date());
   if (localStorage.getItem("notifications_last_date") === todayKey) return;
 
-  const tasks = loadTasks().filter(t => !t.completed);
-  const todayTasks = tasks.filter(t => t.date === todayKey);
-  const overdueTasks = tasks.filter(t => t.date && t.date < todayKey);
+  const tasks = loadTasks();
+  const todayTasks = tasksForDate(tasks, todayKey).filter(t => !isTaskDone(t, todayKey));
+  const overdueTasks = tasks.filter(isTaskOverdue);
 
   if (todayTasks.length === 0 && overdueTasks.length === 0) return;
 
@@ -2401,8 +2390,24 @@ const RU_MONTHS = ["Январь", "Февраль", "Март", "Апрель",
 const RU_MONTHS_SHORT = ["янв.", "февр.", "мар.", "апр.", "мая", "июн.",
   "июл.", "авг.", "сент.", "окт.", "нояб.", "дек."];
 const RU_WEEKDAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const RU_MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня",
+  "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+
+const TASK_CATEGORIES = {
+  normal: "Обычное",
+  important: "Важное",
+  study: "Учёба",
+  sport: "Спорт",
+  personal: "Личное",
+};
+const TASK_ICONS = {
+  repeat: `<svg viewBox="0 0 20 20" fill="none"><path d="M4 8.5A6 6 0 0 1 15 6.5M16 11.5A6 6 0 0 1 5 13.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15.5 3.5v3.3h-3.3M4.5 16.5v-3.3h3.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  tomorrow: `<svg viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 6l4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  goal: `<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="3.5" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="0.9" fill="currentColor"/></svg>`,
+};
 
 let plannerRefDate = new Date();
+let taskModalState = null; // { id, date } — какое дело открыто в окне
 
 function loadTasks() {
   try {
@@ -2416,9 +2421,15 @@ function saveTasks(tasks) {
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
 }
 
-function addTask(text, dateKey) {
+// Время в начале текста («18:00 тренировка») становится временем дела
+function parseTaskInput(raw) {
+  const m = raw.trim().match(/^([01]?\d|2[0-3])[:.]([0-5]\d)\s+(.+)$/);
+  return m ? { text: m[3].trim(), time: `${m[1].padStart(2, "0")}:${m[2]}` } : { text: raw.trim(), time: null };
+}
+
+function addTask(text, dateKey, extra = {}) {
   const tasks = loadTasks();
-  tasks.push({ id: Date.now().toString() + Math.random().toString(36).slice(2, 6), text, date: dateKey });
+  tasks.push({ id: Date.now().toString() + Math.random().toString(36).slice(2, 6), text, date: dateKey, ...extra });
   saveTasks(tasks);
 }
 
@@ -2427,6 +2438,12 @@ function toDateKey(d) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function shiftDateKey(key, days) {
+  const d = parseLocalDate(key);
+  d.setDate(d.getDate() + days);
+  return toDateKey(d);
 }
 
 function startOfWeek(date) {
@@ -2438,49 +2455,155 @@ function startOfWeek(date) {
   return d;
 }
 
+// ---- Повторяющиеся дела: date — с какого дня, repeat — дни недели (1 = пн … 7 = вс) ----
+function isRepeating(task) {
+  return Array.isArray(task.repeat) && task.repeat.length > 0;
+}
+
+function isoWeekday(key) {
+  return (parseLocalDate(key).getDay() + 6) % 7 + 1;
+}
+
+function taskOccursOn(task, key) {
+  if (isRepeating(task)) {
+    return !!task.date && key >= task.date && task.repeat.includes(isoWeekday(key)) && !(task.skip || []).includes(key);
+  }
+  return task.date === key;
+}
+
+function isTaskDone(task, key) {
+  return isRepeating(task) ? (task.doneDates || []).includes(key) : !!task.completed;
+}
+
+function isTaskOverdue(task) {
+  return !isRepeating(task) && !!task.date && task.date < toDateKey(new Date()) && !task.completed;
+}
+
+function byTaskTime(a, b) {
+  return (a.time || "99:99").localeCompare(b.time || "99:99");
+}
+
+function tasksForDate(tasks, key) {
+  return tasks.filter(t => taskOccursOn(t, key)).sort(byTaskTime);
+}
+
+function repeatLabel(days) {
+  const sorted = [...days].sort();
+  if (sorted.length === 7) return "каждый день";
+  if (sorted.join() === "1,2,3,4,5") return "по будням";
+  if (sorted.join() === "6,7") return "по выходным";
+  return sorted.map(d => RU_WEEKDAYS_SHORT[d - 1].toLowerCase()).join(", ");
+}
+
+function updateTask(id, fn) {
+  const tasks = loadTasks();
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  fn(task, tasks);
+  saveTasks(tasks);
+  refreshTaskViews();
+}
+
+function refreshTaskViews() {
+  renderPlanner();
+  renderHome();
+  if (dayModalDate) renderDayModalList();
+}
+
+function toggleTaskDone(id, key) {
+  updateTask(id, task => {
+    if (isRepeating(task)) {
+      const done = new Set(task.doneDates || []);
+      if (done.has(key)) done.delete(key); else done.add(key);
+      task.doneDates = [...done];
+    } else {
+      task.completed = !task.completed;
+    }
+  });
+}
+
+// У повторяющегося дела «удалить» на конкретный день убирает только этот день
+function removeTaskOccurrence(id, key) {
+  const tasks = loadTasks();
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  if (isRepeating(task) && key) {
+    task.skip = [...new Set([...(task.skip || []), key])];
+    saveTasks(tasks);
+  } else {
+    saveTasks(tasks.filter(t => t.id !== id));
+  }
+  refreshTaskViews();
+}
+
+function moveTask(id, dateKey) {
+  updateTask(id, task => {
+    if (!isRepeating(task)) task.date = dateKey;
+  });
+}
+
+function formatWeekRange(start, end) {
+  const sameYear = start.getFullYear() === end.getFullYear();
+  if (start.getMonth() === end.getMonth()) {
+    return `${start.getDate()}–${end.getDate()} ${RU_MONTHS_GEN[end.getMonth()]} ${end.getFullYear()}`;
+  }
+  return `${start.getDate()} ${RU_MONTHS_GEN[start.getMonth()]}${sameYear ? "" : ` ${start.getFullYear()}`} – ${end.getDate()} ${RU_MONTHS_GEN[end.getMonth()]} ${end.getFullYear()}`;
+}
+
 function createTaskEl(task, options = {}) {
-  const todayKey = toDateKey(new Date());
-  const isOverdue = task.date && task.date < todayKey;
+  const key = options.date !== undefined ? options.date : task.date;
+  const done = isTaskDone(task, key);
+  const repeating = isRepeating(task);
+  const overdue = !repeating && isTaskOverdue(task);
 
   const el = document.createElement("div");
-  el.className = "planner-task"
-    + (isOverdue ? " planner-task--overdue" : "")
-    + (task.completed ? " planner-task--completed" : "");
-  el.draggable = true;
+  el.className = `planner-task cat-${task.category || "normal"}`
+    + (overdue ? " planner-task--overdue" : "")
+    + (done ? " planner-task--completed" : "");
+  el.draggable = !repeating;
   el.dataset.id = task.id;
+  el.title = "Нажмите, чтобы изменить";
 
-  const deadlineLabel = options.showDate && task.date
-    ? `<span class="planner-task-deadline">Срок: ${formatDeadline(task.date)}</span>`
-    : "";
+  const meta = [];
+  if (repeating) meta.push(`<span class="planner-task-repeat">${TASK_ICONS.repeat}${repeatLabel(task.repeat)}</span>`);
+  if (options.showDate && task.date) meta.push(`<span class="planner-task-deadline">Срок: ${formatDeadline(task.date)}</span>`);
 
   el.innerHTML = `
-    <button type="button" class="planner-task-check" title="Отметить выполненной"></button>
+    <button type="button" class="planner-task-check" title="${done ? "Снять отметку" : "Отметить выполненной"}"></button>
     <div class="planner-task-body">
-      <span class="planner-task-text">${escapeHtml(task.text)}</span>
-      ${deadlineLabel}
+      <span class="planner-task-text">${task.time ? `<span class="planner-task-time">${task.time}</span>` : ""}${escapeHtml(task.text)}</span>
+      ${meta.join("")}
     </div>
-    <button type="button" class="planner-task-delete" title="Удалить">✕</button>
+    <div class="planner-task-tools">
+      ${options.overdueActions ? `<button type="button" class="planner-task-today" title="Перенести на сегодня">На сегодня</button>` : ""}
+      ${!repeating && key && !options.overdueActions ? `<button type="button" class="planner-task-move" title="Перенести на завтра">${TASK_ICONS.tomorrow}</button>` : ""}
+      <button type="button" class="planner-task-delete" title="${repeating ? "Убрать в этот день" : "Удалить"}">✕</button>
+    </div>
   `;
 
   el.querySelector(".planner-task-check").addEventListener("click", e => {
     e.stopPropagation();
-    const tasks = loadTasks();
-    const t = tasks.find(x => x.id === task.id);
-    if (t) {
-      t.completed = !t.completed;
-      saveTasks(tasks);
-      renderPlanner();
-      renderHome();
-    }
+    toggleTaskDone(task.id, key);
   });
-
   el.querySelector(".planner-task-delete").addEventListener("click", e => {
     e.stopPropagation();
-    saveTasks(loadTasks().filter(t => t.id !== task.id));
-    renderPlanner();
-    renderHome();
+    removeTaskOccurrence(task.id, key);
   });
-
+  const moveBtn = el.querySelector(".planner-task-move");
+  if (moveBtn) {
+    moveBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      moveTask(task.id, shiftDateKey(key, 1));
+    });
+  }
+  const todayBtn = el.querySelector(".planner-task-today");
+  if (todayBtn) {
+    todayBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      moveTask(task.id, toDateKey(new Date()));
+    });
+  }
+  el.addEventListener("click", () => openTaskModal(task.id, key));
   el.addEventListener("dragstart", e => {
     e.dataTransfer.setData("text/plain", task.id);
   });
@@ -2498,14 +2621,39 @@ function attachDropZone(el, dateKey) {
     e.preventDefault();
     el.classList.remove("drag-over");
     const id = e.dataTransfer.getData("text/plain");
-    const tasks = loadTasks();
-    const task = tasks.find(t => t.id === id);
-    if (task) {
-      task.date = dateKey;
-      saveTasks(tasks);
-      renderPlanner();
-    }
+    if (id) moveTask(id, dateKey);
   });
+}
+
+// Сроки целей из «Накоплений» тоже видны в ежедневнике
+function savingsGoalsOn(key) {
+  return loadSavings().filter(g => g.deadline === key && !isSavingsDone(g));
+}
+
+function createGoalEl(goal) {
+  const el = document.createElement("button");
+  el.type = "button";
+  el.className = "planner-goal";
+  el.title = "Открыть «Накопления»";
+  el.innerHTML = `
+    ${TASK_ICONS.goal}
+    <span>
+      <span class="planner-goal-title">Срок цели «${escapeHtml(goal.name)}»</span>
+      <span class="planner-goal-sub">осталось ${savingsAmount(goal.target - goal.current, goal.currency)}</span>
+    </span>
+  `;
+  el.addEventListener("click", () => {
+    const btn = document.querySelector('.sidebar .tab-btn[data-tab="savings"]');
+    if (btn) btn.click();
+  });
+  return el;
+}
+
+function renderPlannerLegend() {
+  const el = document.getElementById("plannerLegend");
+  el.innerHTML = Object.entries(TASK_CATEGORIES)
+    .map(([key, label]) => `<span class="planner-legend-item"><i class="cat-dot cat-${key}"></i>${label}</span>`)
+    .join("");
 }
 
 function renderPlanner() {
@@ -2517,28 +2665,35 @@ function renderPlanner() {
     days.push(d);
   }
 
-  const midDate = days[3];
-  document.getElementById("plannerMonthYear").textContent =
-    `${RU_MONTHS[midDate.getMonth()]} ${midDate.getFullYear()}`;
-
   const tasks = loadTasks();
+  const todayKey = toDateKey(new Date());
+  const isCurrentWeek = days.some(d => toDateKey(d) === todayKey);
+
+  document.getElementById("plannerMonthYear").textContent = formatWeekRange(days[0], days[6]);
+  document.getElementById("plannerTodayBtn").classList.toggle("hidden", isCurrentWeek);
+
   const grid = document.getElementById("plannerGrid");
   grid.innerHTML = "";
-  const todayKey = toDateKey(new Date());
+  let weekTotal = 0;
+  let weekDone = 0;
 
   days.forEach(d => {
     const key = toDateKey(d);
     const isToday = key === todayKey;
-    const dayTasks = tasks.filter(t => t.date === key);
+    const dayTasks = tasksForDate(tasks, key);
+    const doneCount = dayTasks.filter(t => isTaskDone(t, key)).length;
+    weekTotal += dayTasks.length;
+    weekDone += doneCount;
 
     const col = document.createElement("div");
-    col.className = "planner-day" + (isToday ? " today" : "");
+    col.className = "planner-day" + (isToday ? " today" : "") + (key < todayKey ? " past" : "");
 
     const header = document.createElement("div");
     header.className = "planner-day-header";
     header.innerHTML = `
       <span class="planner-day-date">${d.getDate()} ${RU_MONTHS_SHORT[d.getMonth()]}</span>
-      <span class="planner-day-weekday">${RU_WEEKDAYS_SHORT[(d.getDay() + 6) % 7]}</span>
+      <span class="planner-day-weekday">${isToday ? "Сегодня" : RU_WEEKDAYS_SHORT[(d.getDay() + 6) % 7]}</span>
+      ${dayTasks.length ? `<span class="planner-day-count${doneCount === dayTasks.length ? " all-done" : ""}">${doneCount}/${dayTasks.length}</span>` : ""}
     `;
     col.appendChild(header);
 
@@ -2546,7 +2701,8 @@ function renderPlanner() {
     list.className = "planner-day-tasks";
     list.dataset.date = key;
 
-    dayTasks.forEach(task => list.appendChild(createTaskEl(task)));
+    savingsGoalsOn(key).forEach(goal => list.appendChild(createGoalEl(goal)));
+    dayTasks.forEach(task => list.appendChild(createTaskEl(task, { date: key })));
 
     const addInput = document.createElement("input");
     addInput.type = "text";
@@ -2554,8 +2710,11 @@ function renderPlanner() {
     addInput.placeholder = "+ Добавить";
     addInput.addEventListener("keydown", e => {
       if (e.key === "Enter" && addInput.value.trim()) {
-        addTask(addInput.value.trim(), key);
-        renderPlanner();
+        const { text, time } = parseTaskInput(addInput.value);
+        addTask(text, key, time ? { time } : {});
+        refreshTaskViews();
+        const again = document.querySelector(`.planner-day-tasks[data-date="${key}"] .planner-day-add`);
+        if (again) again.focus();
       }
     });
     list.appendChild(addInput);
@@ -2565,21 +2724,26 @@ function renderPlanner() {
     grid.appendChild(col);
   });
 
+  const weekPct = weekTotal ? Math.round((weekDone / weekTotal) * 100) : 0;
+  document.getElementById("plannerSub").textContent = weekTotal
+    ? `Неделя · выполнено ${weekDone} из ${weekTotal}`
+    : "Неделя · дел пока нет";
+  document.getElementById("plannerProgressFill").style.width = `${weekPct}%`;
+
   const somedayList = document.getElementById("somedayList");
   somedayList.innerHTML = "";
-  tasks.filter(t => !t.date).forEach(task => somedayList.appendChild(createTaskEl(task)));
+  tasks.filter(t => !t.date).forEach(task => somedayList.appendChild(createTaskEl(task, { date: null })));
   attachDropZone(somedayList, null);
 
   const overdueBlock = document.getElementById("plannerOverdueBlock");
   const overdueList = document.getElementById("plannerOverdueList");
-  const overdueTasks = tasks.filter(t => t.date && t.date < todayKey);
+  const overdueTasks = tasks.filter(isTaskOverdue).sort((a, b) => a.date.localeCompare(b.date));
 
   overdueList.innerHTML = "";
   if (overdueTasks.length > 0) {
     overdueBlock.style.display = "block";
-    overdueTasks
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .forEach(task => overdueList.appendChild(createTaskEl(task, { showDate: true })));
+    document.getElementById("plannerOverdueTitle").textContent = `Просрочено: ${overdueTasks.length}`;
+    overdueTasks.forEach(task => overdueList.appendChild(createTaskEl(task, { showDate: true, overdueActions: true })));
   } else {
     overdueBlock.style.display = "none";
   }
@@ -2591,6 +2755,116 @@ function renderPlanner() {
   }
 }
 
+// ---- Окно дела: текст, дата, время, цвет, повтор ----
+function renderTaskModalChips(task) {
+  const cats = document.getElementById("taskModalCategories");
+  cats.innerHTML = Object.entries(TASK_CATEGORIES).map(([key, label]) => `
+    <button type="button" class="events-chip${(task.category || "normal") === key ? " active" : ""}" data-category="${key}"><i class="cat-dot cat-${key}"></i>${label}</button>
+  `).join("");
+
+  const repeat = new Set(task.repeat || []);
+  document.getElementById("taskModalRepeat").innerHTML = RU_WEEKDAYS_SHORT.map((label, i) => `
+    <button type="button" class="task-weekday${repeat.has(i + 1) ? " active" : ""}" data-day="${i + 1}">${label}</button>
+  `).join("");
+  updateRepeatNote();
+}
+
+function updateRepeatNote() {
+  const days = [...document.querySelectorAll("#taskModalRepeat .task-weekday.active")].map(b => Number(b.dataset.day));
+  document.getElementById("taskModalRepeatNote").textContent = days.length
+    ? `Будет повторяться: ${repeatLabel(days)}`
+    : "Не повторяется — отметьте дни недели, чтобы дело повторялось";
+  document.getElementById("taskModalDateLabel").textContent = days.length ? "Начиная с" : "Дата";
+  const tomorrowBtn = document.getElementById("taskModalTomorrowBtn");
+  tomorrowBtn.style.display = days.length || !document.getElementById("taskModalDate").value ? "none" : "";
+}
+
+function openTaskModal(id, dateKey) {
+  const task = loadTasks().find(t => t.id === id);
+  if (!task) return;
+  taskModalState = { id, date: dateKey };
+  document.getElementById("taskModalText").value = task.text;
+  document.getElementById("taskModalDate").value = task.date || "";
+  document.getElementById("taskModalTime").value = task.time || "";
+  document.getElementById("taskModalError").textContent = "";
+  document.getElementById("taskModalDeleteBtn").textContent = isRepeating(task) ? "Удалить все повторы" : "Удалить";
+  renderTaskModalChips(task);
+  document.getElementById("taskModalOverlay").classList.add("open");
+}
+
+function closeTaskModal() {
+  document.getElementById("taskModalOverlay").classList.remove("open");
+  taskModalState = null;
+}
+
+(() => {
+  const overlay = document.getElementById("taskModalOverlay");
+
+  document.getElementById("taskModalCategories").addEventListener("click", e => {
+    const chip = e.target.closest("[data-category]");
+    if (!chip) return;
+    document.querySelectorAll("#taskModalCategories [data-category]").forEach(c => c.classList.toggle("active", c === chip));
+  });
+  document.getElementById("taskModalRepeat").addEventListener("click", e => {
+    const day = e.target.closest("[data-day]");
+    if (!day) return;
+    day.classList.toggle("active");
+    updateRepeatNote();
+  });
+  document.getElementById("taskModalDate").addEventListener("input", updateRepeatNote);
+
+  document.getElementById("taskModalForm").addEventListener("submit", e => {
+    e.preventDefault();
+    if (!taskModalState) return;
+    const text = document.getElementById("taskModalText").value.trim();
+    if (!text) {
+      document.getElementById("taskModalError").textContent = "Напишите, что нужно сделать.";
+      return;
+    }
+    const repeat = [...document.querySelectorAll("#taskModalRepeat .task-weekday.active")].map(b => Number(b.dataset.day));
+    let date = document.getElementById("taskModalDate").value || null;
+    if (repeat.length && !date) date = toDateKey(new Date()); // повтор начинается с сегодня
+    const activeCat = document.querySelector("#taskModalCategories .active");
+
+    updateTask(taskModalState.id, task => {
+      const wasRepeating = isRepeating(task);
+      task.text = text;
+      task.date = date;
+      task.time = document.getElementById("taskModalTime").value || null;
+      task.category = activeCat ? activeCat.dataset.category : "normal";
+      task.repeat = repeat.length ? repeat : undefined;
+      // При смене «разовое ↔ повторяющееся» отметки выполнения начинаются заново
+      if (wasRepeating !== repeat.length > 0) {
+        delete task.doneDates;
+        delete task.skip;
+        task.completed = false;
+      }
+    });
+    closeTaskModal();
+  });
+
+  document.getElementById("taskModalDeleteBtn").addEventListener("click", () => {
+    if (!taskModalState) return;
+    saveTasks(loadTasks().filter(t => t.id !== taskModalState.id));
+    closeTaskModal();
+    refreshTaskViews();
+  });
+
+  document.getElementById("taskModalTomorrowBtn").addEventListener("click", () => {
+    if (!taskModalState) return;
+    const date = document.getElementById("taskModalDate").value;
+    if (!date) return;
+    moveTask(taskModalState.id, shiftDateKey(date, 1));
+    closeTaskModal();
+  });
+
+  document.getElementById("taskModalCloseBtn").addEventListener("click", closeTaskModal);
+  overlay.addEventListener("click", e => { if (e.target === overlay) closeTaskModal(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeTaskModal(); });
+})();
+
+renderPlannerLegend();
+
 document.getElementById("plannerPrevBtn").addEventListener("click", () => {
   plannerRefDate.setDate(plannerRefDate.getDate() - 7);
   renderPlanner();
@@ -2599,31 +2873,17 @@ document.getElementById("plannerNextBtn").addEventListener("click", () => {
   plannerRefDate.setDate(plannerRefDate.getDate() + 7);
   renderPlanner();
 });
+document.getElementById("plannerTodayBtn").addEventListener("click", () => {
+  plannerRefDate = new Date();
+  renderPlanner();
+});
 document.getElementById("somedayInput").addEventListener("keydown", e => {
   if (e.key === "Enter" && e.target.value.trim()) {
-    addTask(e.target.value.trim(), null);
+    const { text, time } = parseTaskInput(e.target.value);
+    addTask(text, null, time ? { time } : {});
     e.target.value = "";
-    renderPlanner();
+    refreshTaskViews();
   }
-});
-
-document.getElementById("deadlineForm").addEventListener("submit", e => {
-  e.preventDefault();
-  const textInput = document.getElementById("deadlineTaskText");
-  const dateInput = document.getElementById("deadlineTaskDate");
-
-  const text = textInput.value.trim();
-  const date = dateInput.value;
-  if (!text || !date) return;
-
-  addTask(text, date);
-
-  // Переходим на неделю с этой датой, чтобы сразу увидеть добавленное дело
-  const [y, m, d] = date.split("-").map(Number);
-  plannerRefDate = new Date(y, m - 1, d);
-  renderPlanner();
-
-  e.target.reset();
 });
 
 document.getElementById("weatherRefreshBtn").addEventListener("click", loadWeatherForecast);

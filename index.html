@@ -612,26 +612,25 @@
     <!-- ЕЖЕДНЕВНИК -->
     <section id="planner" class="tab-content">
       <div class="planner-header">
-        <h2 id="plannerMonthYear">Ежедневник</h2>
+        <div>
+          <h2 id="plannerMonthYear">Ежедневник</h2>
+          <div id="plannerSub" class="planner-sub"></div>
+        </div>
         <div class="planner-nav">
-          <button id="plannerPrevBtn" title="Предыдущая неделя">‹</button>
-          <button id="plannerNextBtn" title="Следующая неделя">›</button>
+          <button type="button" id="plannerTodayBtn" class="planner-today-btn">Сегодня</button>
+          <button type="button" id="plannerPrevBtn" title="Предыдущая неделя">‹</button>
+          <button type="button" id="plannerNextBtn" title="Следующая неделя">›</button>
         </div>
       </div>
-      <form id="deadlineForm" class="row planner-deadline-form">
-        <div class="field grow">
-          <label for="deadlineTaskText">Новое дело с дедлайном</label>
-          <input type="text" id="deadlineTaskText" placeholder="Что нужно сделать?" required>
-        </div>
-        <div class="field">
-          <label for="deadlineTaskDate">Срок</label>
-          <input type="date" id="deadlineTaskDate" required>
-        </div>
-        <button type="submit">Добавить</button>
-      </form>
+      <div class="planner-progress"><div id="plannerProgressFill" class="planner-progress-fill"></div></div>
+      <div class="planner-hint">
+        Нажмите «+ Добавить» в нужном дне. Время можно написать в начале: «18:00 тренировка».
+        Нажмите на дело, чтобы выбрать цвет, время, повтор или перенести его.
+      </div>
+      <div id="plannerLegend" class="planner-legend"></div>
 
       <div id="plannerOverdueBlock" class="planner-overdue-block" style="display:none">
-        <h3>⚠️ Просрочено</h3>
+        <h3 id="plannerOverdueTitle">Просрочено</h3>
         <div class="planner-overdue-list" id="plannerOverdueList"></div>
       </div>
 
@@ -806,6 +805,33 @@
         <button type="button" id="noteDeleteBtn" class="note-delete-btn">Удалить</button>
         <button type="button" id="noteSaveBtn">Сохранить</button>
       </div>
+    </div>
+  </div>
+
+  <div class="day-modal-overlay" id="taskModalOverlay">
+    <div class="day-modal task-modal">
+      <div class="day-modal-header">
+        <h3>Дело</h3>
+        <button type="button" id="taskModalCloseBtn" class="day-modal-close" title="Закрыть">✕</button>
+      </div>
+      <form id="taskModalForm" class="task-modal-form" novalidate>
+        <input type="text" id="taskModalText" class="note-title-input" placeholder="Что нужно сделать?" maxlength="120">
+        <div class="task-modal-row">
+          <label class="field"><span id="taskModalDateLabel">Дата</span><input type="date" id="taskModalDate"></label>
+          <label class="field"><span>Время</span><input type="time" id="taskModalTime"></label>
+        </div>
+        <div class="task-modal-label">Цвет</div>
+        <div id="taskModalCategories" class="task-modal-chips"></div>
+        <div class="task-modal-label">Повторять</div>
+        <div id="taskModalRepeat" class="task-modal-weekdays"></div>
+        <div class="task-modal-note" id="taskModalRepeatNote"></div>
+        <div id="taskModalError" class="error"></div>
+        <div class="task-modal-actions">
+          <button type="button" id="taskModalDeleteBtn" class="note-delete-btn">Удалить</button>
+          <button type="button" id="taskModalTomorrowBtn" class="secondary-btn">Перенести на завтра</button>
+          <button type="submit" id="taskModalSaveBtn">Сохранить</button>
+        </div>
+      </form>
     </div>
   </div>
 

@@ -17,6 +17,8 @@
   --series-4: #c98500;
   --series-5: #d55181;
   --star: #f5b400;
+  --cat-study: #a78bfa;
+  --cat-personal: #f0a020;
 }
 
 :root[data-theme="light"] {
@@ -38,6 +40,8 @@
   --series-4: #eda100;
   --series-5: #e87ba4;
   --star: #e0a000;
+  --cat-study: #7c5ce0;
+  --cat-personal: #d98a00;
 }
 
 * { box-sizing: border-box; }
@@ -2566,19 +2570,31 @@ input.input-invalid {
 }
 
 /* ---------- Planner (weekly grid) ---------- */
+#planner {
+  container-type: inline-size;
+}
+
 .planner-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .planner-header h2 {
   margin: 0;
 }
 
+.planner-sub {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 3px;
+}
+
 .planner-nav {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
@@ -2594,6 +2610,75 @@ input.input-invalid {
 }
 .planner-nav button:hover { background: var(--border); }
 
+.planner-nav .planner-today-btn {
+  width: auto;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.planner-nav .planner-today-btn:hover {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+.planner-today-btn.hidden {
+  visibility: hidden;
+}
+
+.planner-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.planner-progress-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--success);
+  transition: width 0.3s ease;
+}
+
+.planner-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.planner-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+}
+.planner-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Цвета категорий */
+.cat-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--cat-color);
+}
+.cat-normal { --cat-color: var(--accent); }
+.cat-important { --cat-color: var(--danger); }
+.cat-study { --cat-color: var(--cat-study); }
+.cat-sport { --cat-color: var(--success); }
+.cat-personal { --cat-color: var(--cat-personal); }
+
 .planner-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(130px, 1fr));
@@ -2606,13 +2691,18 @@ input.input-invalid {
   border-right: 1px solid var(--border);
   padding: 14px 10px;
   min-height: 220px;
+  min-width: 0;
 }
 .planner-day:last-child { border-right: none; }
+.planner-day.today {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: inset 0 3px 0 var(--accent);
+}
 
 .planner-day-header {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  gap: 6px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 8px;
   margin-bottom: 10px;
@@ -2628,11 +2718,31 @@ input.input-invalid {
   color: var(--text-dim);
 }
 
-.planner-day.today .planner-day-date {
+.planner-day-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-variant-numeric: tabular-nums;
+}
+.planner-day-count.all-done {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+}
+
+.planner-day.today .planner-day-date,
+.planner-day.today .planner-day-weekday {
   color: var(--accent);
+  font-weight: 700;
 }
 .planner-day.today .planner-day-header {
   border-bottom-color: var(--accent);
+}
+.planner-day.past .planner-day-date {
+  color: var(--text-dim);
 }
 
 .planner-day-tasks {
@@ -2649,13 +2759,16 @@ input.input-invalid {
 }
 
 .planner-task {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 8px;
   font-size: 13px;
-  padding: 6px 8px;
+  padding: 6px 8px 6px 10px;
   border-radius: 6px;
   background: var(--surface);
+  cursor: pointer;
+  border-left: 3px solid var(--cat-color, var(--accent));
 }
 .planner-task:hover {
   background: var(--surface-2);
@@ -2687,13 +2800,62 @@ input.input-invalid {
 }
 
 .planner-task-text {
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 
-.planner-task-delete {
+.planner-task-time {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--cat-color, var(--accent));
+}
+
+.planner-task-repeat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.planner-task-repeat svg {
+  width: 11px;
+  height: 11px;
+}
+
+.planner-task-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+/* В колонках дня кнопки всплывают поверх карточки и не отнимают место у текста */
+.planner-day .planner-task-tools {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  padding: 1px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.planner-day .planner-task:hover .planner-task-tools {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.planner-task-delete,
+.planner-task-move {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   background: transparent;
   color: var(--text-dim);
@@ -2703,23 +2865,79 @@ input.input-invalid {
   opacity: 0;
   transition: opacity 0.15s, background 0.15s, color 0.15s;
 }
-.planner-task:hover .planner-task-delete {
+.planner-task-move svg {
+  width: 13px;
+  height: 13px;
+}
+.planner-task:hover .planner-task-delete,
+.planner-task:hover .planner-task-move {
   opacity: 1;
 }
 .planner-task-delete:hover {
   background: color-mix(in srgb, var(--danger) 25%, transparent);
   color: var(--danger);
 }
+.planner-task-move:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+}
 
+.planner-task-today {
+  width: auto;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+.planner-task-today:hover {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+/* Выполненное — тусклое, без зачёркивания */
 .planner-task--completed .planner-task-check {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--cat-color, var(--accent));
+  border-color: var(--cat-color, var(--accent));
 }
-.planner-task--completed .planner-task-text {
-  color: var(--text-dim);
+.planner-task--completed .planner-task-body {
+  opacity: 0.5;
 }
 
-.planner-day-add {
+.planner-goal {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--star) 12%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--star) 55%, transparent);
+  color: var(--text);
+}
+.planner-goal:hover {
+  background: color-mix(in srgb, var(--star) 20%, transparent);
+}
+.planner-goal svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--star);
+  margin-top: 1px;
+}
+.planner-goal-title {
+  display: block;
+  font-weight: 600;
+}
+.planner-goal-sub {
+  display: block;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+input.planner-day-add {
   background: none;
   border: none;
   color: var(--text-dim);
@@ -2728,7 +2946,7 @@ input.input-invalid {
   width: 100%;
   min-width: 0;
 }
-.planner-day-add:focus {
+input.planner-day-add:focus {
   outline: none;
   background: var(--surface-2);
   border-radius: 6px;
@@ -2756,16 +2974,12 @@ input.input-invalid {
   background: var(--surface-2);
 }
 
-.planner-deadline-form {
-  margin-bottom: 20px;
-}
-
 .planner-overdue-block {
   background: rgba(255, 91, 110, 0.08);
   border: 1px solid var(--danger);
   border-radius: var(--radius);
   padding: 14px 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .planner-overdue-block h3 {
@@ -2781,8 +2995,8 @@ input.input-invalid {
 }
 
 .planner-task--overdue {
-  border: 1px solid var(--danger);
   background: rgba(255, 91, 110, 0.1);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 60%, transparent);
 }
 
 .planner-task-deadline {
@@ -2790,6 +3004,142 @@ input.input-invalid {
   font-size: 11px;
   color: var(--danger);
   margin-top: 2px;
+}
+
+/* Узкий экран: дни списком сверху вниз */
+@container (max-width: 760px) {
+  .planner-grid {
+    grid-template-columns: 1fr;
+    border-top: none;
+    gap: 10px;
+  }
+  .planner-day {
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+  .planner-day:last-child {
+    border-right: 1px solid var(--border);
+  }
+  .planner-day-tasks {
+    min-height: 0;
+  }
+  .planner-task-delete,
+  .planner-task-move {
+    opacity: 1;
+  }
+}
+
+/* ---------- Окно дела ---------- */
+.task-modal {
+  width: 440px;
+}
+.task-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.task-modal-form .note-title-input {
+  width: 100%;
+}
+.task-modal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.task-modal-row .field span,
+.task-modal-label {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.task-modal-row input {
+  width: 100%;
+  min-width: 0;
+}
+input[type="time"] {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  color-scheme: dark;
+}
+:root[data-theme="light"] input[type="time"] {
+  color-scheme: light;
+}
+.task-modal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.task-modal-chips .events-chip {
+  padding: 6px 11px;
+  font-size: 12px;
+}
+.task-modal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+.task-weekday {
+  padding: 7px 0;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.task-weekday:hover {
+  background: var(--border);
+  color: var(--text);
+}
+.task-weekday.active {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--text);
+}
+.task-modal-note {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.task-modal-form .error {
+  margin-top: 0;
+}
+.task-modal-form .error:empty {
+  display: none;
+}
+.task-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.task-modal-actions #taskModalSaveBtn {
+  margin-left: auto;
+  width: auto;
+  padding: 8px 18px;
+}
+
+/* Дела на главной и в окне дня */
+.home-task {
+  justify-content: flex-start;
+  border-left: 3px solid var(--cat-color, var(--accent));
+}
+.home-task-check {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-dim);
+}
+.home-task.done .home-task-check {
+  background: var(--cat-color, var(--accent));
+  border-color: var(--cat-color, var(--accent));
+}
+.home-task.done .home-task-text {
+  opacity: 0.5;
 }
 
 /* ---------- Home dashboard ---------- */
