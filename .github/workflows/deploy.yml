@@ -51,6 +51,9 @@ jobs:
           mkdir _site
           cp index.html style.css *.js _site/
           cp -r data _site/
+          # Номер версии в ссылках на CSS и JS: браузер сразу берёт новые файлы,
+          # а не смешивает новую страницу со старым кодом из кэша
+          sed -i "s/__BUILD__/${GITHUB_SHA::8}-${GITHUB_RUN_NUMBER}/g" _site/index.html
 
       - uses: actions/configure-pages@v5
 
