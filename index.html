@@ -683,7 +683,21 @@
         <h2>Заметки</h2>
         <button type="button" id="noteNewBtn">+ Новая заметка</button>
       </div>
-      <div id="notesGrid" class="notes-grid"></div>
+      <div class="notes-toolbar">
+        <div class="asset-picker asset-search notes-search">
+          <svg class="asset-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13.2 13.2 17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <input type="text" id="notesSearch" placeholder="Поиск по заголовку и тексту..." autocomplete="off">
+        </div>
+        <select id="notesSort" aria-label="Сортировка">
+          <option value="updated">Сначала изменённые</option>
+          <option value="created">Сначала новые</option>
+          <option value="title">По алфавиту</option>
+        </select>
+        <button type="button" id="notesTrashBtn" class="secondary-btn notes-trash-btn">Корзина</button>
+      </div>
+      <div id="notesLabels" class="events-filters"></div>
+      <div id="notesMeta" class="notes-meta"></div>
+      <div id="notesGrid"></div>
     </section>
 
     <!-- НАСТРОЙКИ -->
@@ -790,20 +804,44 @@
     <div class="day-modal note-modal">
       <div class="day-modal-header">
         <h3 id="noteModalTitleLabel">Новая заметка</h3>
-        <button type="button" id="noteModalCloseBtn" class="day-modal-close" title="Закрыть">✕</button>
+        <div class="note-modal-head-tools">
+          <span id="noteSaveStatus" class="note-save-status"></span>
+          <button type="button" id="notePinBtn" class="note-icon-btn" title="Закрепить сверху"></button>
+          <button type="button" id="noteModalCloseBtn" class="day-modal-close" title="Закрыть">✕</button>
+        </div>
       </div>
 
-      <input type="text" id="noteTitleInput" class="note-title-input" placeholder="Заголовок заметки">
+      <input type="text" id="noteTitleInput" class="note-title-input" placeholder="Заголовок заметки" maxlength="120">
       <textarea id="noteTextInput" class="note-text-input" rows="6" placeholder="Текст заметки..."></textarea>
 
-      <div class="note-image-area" id="noteImageArea">
-        <button type="button" id="noteImageBtn" class="note-image-btn">+ Добавить фото</button>
-        <input type="file" id="noteImageInput" accept="image/*" hidden>
+      <div class="note-section-label">Список с галочками</div>
+      <div id="noteChecklist" class="note-checklist"></div>
+      <input type="text" id="noteChecklistInput" class="note-checklist-add" placeholder="+ Пункт списка — напишите и нажмите Enter" autocomplete="off">
+
+      <div class="note-section-label">Метка</div>
+      <div id="noteLabels" class="task-modal-chips"></div>
+
+      <div class="note-section-label">Актив из «Финансового сектора»</div>
+      <div id="noteAssetChip" class="note-asset-chip-wrap"></div>
+      <div class="asset-picker" id="noteAssetPicker">
+        <input type="text" id="noteAssetInput" placeholder="Связать с акцией или криптой: Сбербанк, BTC..." autocomplete="off">
+        <div class="asset-picker-list" id="noteAssetList"></div>
       </div>
 
+      <div class="note-image-area" id="noteImageArea"></div>
+
+      <div id="notePlannerRow" class="note-planner-row" hidden>
+        <span>Добавить в ежедневник на</span>
+        <input type="date" id="notePlannerDate">
+        <button type="button" id="notePlannerAddBtn">Добавить</button>
+      </div>
+      <div id="noteFlash" class="note-flash"></div>
+
       <div class="note-modal-actions">
-        <button type="button" id="noteDeleteBtn" class="note-delete-btn">Удалить</button>
-        <button type="button" id="noteSaveBtn">Сохранить</button>
+        <button type="button" id="noteDeleteBtn" class="note-delete-btn">В корзину</button>
+        <button type="button" id="notePlannerBtn" class="secondary-btn">В ежедневник</button>
+        <button type="button" id="noteRevertBtn" class="secondary-btn">Отменить изменения</button>
+        <button type="button" id="noteSaveBtn">Готово</button>
       </div>
     </div>
   </div>

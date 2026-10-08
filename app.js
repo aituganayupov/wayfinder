@@ -2898,19 +2898,57 @@ tabBtns.forEach(btn => {
 
 // ---------- Заметки ----------
 const NOTES_KEY = "notes_data";
-let notesEditingId = null;
-let notesPendingImage = null;
+const NOTES_VIEW_KEY = "notes_view";
+const NOTES_TRASH_DAYS = 30;
+const NOTE_LABELS = {
+  study: "Учёба",
+  ideas: "Идеи",
+  finance: "Финансы",
+  sport: "Тренировки",
+  personal: "Личное",
+};
+const NOTE_ICONS = {
+  pin: `<svg viewBox="0 0 20 20" fill="none"><path d="M12.5 3.5l4 4-2.6 1.1-2.9 2.9.4 3.2-1.4 1.4-2.9-2.9L4 16.3 3.7 16l3.1-3.1-2.9-2.9 1.4-1.4 3.2.4 2.9-2.9Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>`,
+  note: `<svg viewBox="0 0 44 44" fill="none"><path d="M9 5h19l8 8v25a2 2 0 01-2 2H9a2 2 0 01-2-2V7a2 2 0 012-2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M28 5v8h8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M13 20h16M13 26h16M13 32h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+  planner: `<svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4.5" width="14" height="12.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8.5h14M7 2.8v3.4M13 2.8v3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+};
+
+let notesView = { label: "all", sort: "updated", trash: false };
+try {
+  const saved = JSON.parse(localStorage.getItem(NOTES_VIEW_KEY));
+  if (saved) notesView = { ...notesView, label: saved.label || "all", sort: saved.sort || "updated" };
+} catch { /* вид по умолчанию */ }
+
+let noteDraft = null;     // заметка, открытая в редакторе
+let noteSnapshot = null;  // как она выглядела при открытии — для «Отменить изменения»
+let noteIsNew = false;
+let noteSaveTimer = null;
+let notesUndoId = null;   // только что убранная в корзину — можно вернуть
+
+function newNoteId() {
+  return Date.now().toString() + Math.random().toString(36).slice(2, 6);
+}
 
 function loadNotes() {
+  let notes;
   try {
-    return JSON.parse(localStorage.getItem(NOTES_KEY)) || [];
+    notes = JSON.parse(localStorage.getItem(NOTES_KEY)) || [];
   } catch {
-    return [];
+    notes = [];
   }
+  // Заметки старше 30 дней в корзине удаляются навсегда
+  const limit = Date.now() - NOTES_TRASH_DAYS * DAY_MS;
+  const kept = notes.filter(n => !n.deletedAt || new Date(n.deletedAt).getTime() > limit);
+  if (kept.length !== notes.length) saveNotes(kept);
+  return kept.map(n => ({ checklist: [], createdAt: n.updatedAt, ...n }));
 }
 
 function saveNotes(notes) {
   localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+}
+
+function saveNotesView() {
+  try { localStorage.setItem(NOTES_VIEW_KEY, JSON.stringify({ label: notesView.label, sort: notesView.sort })); } catch { /* приватный режим */ }
 }
 
 function resizeImageFile(file, maxWidth) {
@@ -2941,18 +2979,109 @@ function formatNoteDate(iso) {
   return d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+function isNoteEmpty(note) {
+  return !note.title.trim() && !note.text.trim() && !note.image && !note.checklist.length && !note.asset;
+}
+
+function noteHeadline(note) {
+  return note.title.trim() || note.text.trim().split("\n")[0].slice(0, 80) || "Заметка";
+}
+
+// ---- Редактор с автосохранением ----
+function setNoteStatus(text) {
+  document.getElementById("noteSaveStatus").textContent = text;
+}
+
+function persistNoteDraft() {
+  clearTimeout(noteSaveTimer);
+  noteSaveTimer = null;
+  if (!noteDraft) return;
+  const notes = loadNotes();
+  const index = notes.findIndex(n => n.id === noteDraft.id);
+  // Пустую новую заметку не сохраняем
+  if (index < 0 && isNoteEmpty(noteDraft)) {
+    setNoteStatus("");
+    return;
+  }
+  noteDraft.updatedAt = new Date().toISOString();
+  const copy = JSON.parse(JSON.stringify(noteDraft));
+  if (index >= 0) notes[index] = copy;
+  else notes.push(copy);
+  try {
+    saveNotes(notes);
+    setNoteStatus("Сохранено");
+  } catch {
+    setNoteStatus("Не удалось сохранить — слишком большое фото");
+  }
+  renderNotes();
+}
+
+function scheduleNoteSave() {
+  setNoteStatus("Сохраняю…");
+  clearTimeout(noteSaveTimer);
+  noteSaveTimer = setTimeout(persistNoteDraft, 400);
+}
+
+function renderNotePin() {
+  const btn = document.getElementById("notePinBtn");
+  btn.innerHTML = NOTE_ICONS.pin;
+  btn.classList.toggle("active", !!noteDraft.pinned);
+  btn.title = noteDraft.pinned ? "Открепить" : "Закрепить сверху";
+}
+
+function renderNoteChecklist() {
+  const el = document.getElementById("noteChecklist");
+  const items = noteDraft.checklist;
+  el.innerHTML = items.map(item => `
+    <div class="note-check-item${item.done ? " done" : ""}" data-id="${item.id}">
+      <button type="button" class="note-check-box" data-action="toggle" title="${item.done ? "Снять отметку" : "Отметить"}"></button>
+      <input type="text" class="note-check-text" value="${escapeAttr(item.text)}" maxlength="200">
+      <button type="button" class="note-check-btn" data-action="planner" title="Добавить в ежедневник на сегодня">${NOTE_ICONS.planner}</button>
+      <button type="button" class="note-check-btn danger" data-action="remove" title="Удалить пункт">✕</button>
+    </div>
+  `).join("");
+  if (items.length) {
+    const done = items.filter(i => i.done).length;
+    el.insertAdjacentHTML("beforeend", `<div class="note-check-progress">Выполнено ${done} из ${items.length}</div>`);
+  }
+}
+
+function renderNoteLabels() {
+  document.getElementById("noteLabels").innerHTML = Object.entries(NOTE_LABELS).map(([key, label]) => `
+    <button type="button" class="events-chip note-label-${key}${noteDraft.label === key ? " active" : ""}" data-label="${key}"><i class="cat-dot"></i>${label}</button>
+  `).join("");
+}
+
+let noteAssetPicker = null;
+
+function renderNoteAsset() {
+  const chip = document.getElementById("noteAssetChip");
+  const picker = document.getElementById("noteAssetPicker");
+  const asset = noteDraft.asset;
+  picker.style.display = asset ? "none" : "";
+  chip.innerHTML = asset ? `
+    <span class="note-asset-chip">
+      <b>${escapeHtml(asset.ticker || asset.symbol)}</b> ${escapeHtml(asset.name)}
+      <button type="button" class="note-asset-link" data-action="chart">График →</button>
+      <button type="button" class="note-check-btn danger" data-action="unlink" title="Отвязать">✕</button>
+    </span>
+  ` : "";
+  if (noteAssetPicker) noteAssetPicker.refresh();
+}
+
 function renderNoteImageArea() {
   const area = document.getElementById("noteImageArea");
-  if (notesPendingImage) {
+  if (noteDraft.image) {
     area.innerHTML = `
       <div class="note-image-preview-wrap">
-        <img src="${notesPendingImage}" class="note-image-preview">
+        <img src="${noteDraft.image}" class="note-image-preview" alt="">
         <button type="button" id="noteImageRemoveBtn" class="note-image-remove" title="Убрать фото">✕</button>
       </div>
     `;
     document.getElementById("noteImageRemoveBtn").addEventListener("click", () => {
-      notesPendingImage = null;
+      noteDraft.image = null;
       renderNoteImageArea();
+      persistNoteDraft();
     });
   } else {
     area.innerHTML = `
@@ -2965,106 +3094,417 @@ function renderNoteImageArea() {
     document.getElementById("noteImageInput").addEventListener("change", async e => {
       const file = e.target.files[0];
       if (!file) return;
-      notesPendingImage = await resizeImageFile(file, 900);
+      noteDraft.image = await resizeImageFile(file, 900);
       renderNoteImageArea();
+      persistNoteDraft();
     });
   }
 }
 
-function openNoteModal(note) {
-  notesEditingId = note ? note.id : null;
-  notesPendingImage = note ? note.image : null;
+function showNoteFlash(text) {
+  const el = document.getElementById("noteFlash");
+  el.textContent = text;
+  clearTimeout(showNoteFlash.timer);
+  showNoteFlash.timer = setTimeout(() => { el.textContent = ""; }, 4000);
+}
+
+function openNoteModal(note, preset = {}) {
+  const now = new Date().toISOString();
+  noteIsNew = !note;
+  noteDraft = note
+    ? JSON.parse(JSON.stringify(note))
+    : { id: newNoteId(), title: "", text: "", image: null, pinned: false, label: null, checklist: [], asset: null, createdAt: now, updatedAt: now, ...preset };
+  noteSnapshot = note ? JSON.parse(JSON.stringify(note)) : null;
+
   document.getElementById("noteModalTitleLabel").textContent = note ? "Заметка" : "Новая заметка";
-  document.getElementById("noteTitleInput").value = note ? note.title : "";
-  document.getElementById("noteTextInput").value = note ? note.text : "";
-  document.getElementById("noteDeleteBtn").classList.toggle("hidden", !note);
+  document.getElementById("noteTitleInput").value = noteDraft.title;
+  document.getElementById("noteTextInput").value = noteDraft.text;
+  document.getElementById("noteChecklistInput").value = "";
+  document.getElementById("noteDeleteBtn").classList.toggle("hidden", noteIsNew);
+  document.getElementById("noteRevertBtn").textContent = noteIsNew ? "Отмена" : "Отменить изменения";
+  document.getElementById("notePlannerRow").hidden = true;
+  document.getElementById("noteFlash").textContent = "";
+  setNoteStatus(noteIsNew ? "" : `Изменено ${formatNoteDate(noteDraft.updatedAt)}`);
+  renderNotePin();
+  renderNoteChecklist();
+  renderNoteLabels();
+  renderNoteAsset();
   renderNoteImageArea();
   document.getElementById("noteModalOverlay").classList.add("open");
-  document.getElementById("noteTitleInput").focus();
+  document.getElementById(noteDraft.title ? "noteTextInput" : "noteTitleInput").focus();
 }
 
 function closeNoteModal() {
+  if (!noteDraft) return;
+  if (noteSaveTimer) persistNoteDraft();
   document.getElementById("noteModalOverlay").classList.remove("open");
-  notesEditingId = null;
-  notesPendingImage = null;
+  noteDraft = null;
+  noteSnapshot = null;
+}
+
+// «Отмена» у новой заметки — не сохранять её; у старой — вернуть как было при открытии
+function revertNote() {
+  if (!noteDraft) return;
+  clearTimeout(noteSaveTimer);
+  noteSaveTimer = null;
+  const notes = loadNotes().filter(n => n.id !== noteDraft.id);
+  if (noteSnapshot) notes.push(noteSnapshot);
+  saveNotes(notes);
+  document.getElementById("noteModalOverlay").classList.remove("open");
+  noteDraft = null;
+  noteSnapshot = null;
+  renderNotes();
+}
+
+function trashNote(id) {
+  const notes = loadNotes();
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  note.deletedAt = new Date().toISOString();
+  saveNotes(notes);
+  notesUndoId = id;
+  renderNotes();
+}
+
+function restoreNote(id) {
+  const notes = loadNotes();
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  delete note.deletedAt;
+  saveNotes(notes);
+  if (notesUndoId === id) notesUndoId = null;
+  renderNotes();
+}
+
+// Заметка к акции или монете — из «Избранного» и «Графиков»
+function openAssetNote(asset) {
+  const btn = document.querySelector('.sidebar .tab-btn[data-tab="notes"]');
+  if (btn) btn.click();
+  const existing = loadNotes().find(n => !n.deletedAt && n.asset && n.asset.id === asset.id);
+  if (existing) openNoteModal(existing);
+  else openNoteModal(null, { title: `${asset.name}: почему покупаю`, label: "finance", asset: assetMeta(asset) });
+}
+
+// ---- Список заметок ----
+function noteMatches(note, query) {
+  if (!query) return true;
+  const hay = [
+    note.title, note.text, ...note.checklist.map(i => i.text),
+    note.label ? NOTE_LABELS[note.label] : "",
+    note.asset ? `${note.asset.name} ${note.asset.ticker || ""}` : "",
+  ].join(" ").toLowerCase().replace(/ё/g, "е");
+  return query.toLowerCase().replace(/ё/g, "е").split(/\s+/).every(word => hay.includes(word));
+}
+
+function sortNotes(notes) {
+  const sorters = {
+    updated: (a, b) => b.updatedAt.localeCompare(a.updatedAt),
+    created: (a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""),
+    title: (a, b) => noteHeadline(a).localeCompare(noteHeadline(b), "ru"),
+  };
+  return notes.sort(sorters[notesView.sort] || sorters.updated);
+}
+
+function noteCardHtml(note, trash) {
+  const checklist = note.checklist;
+  const done = checklist.filter(i => i.done).length;
+  const label = note.label && NOTE_LABELS[note.label];
+  return `
+    <div class="note-card${note.pinned && !trash ? " pinned" : ""}${label ? ` note-label-${note.label}` : ""}" data-id="${note.id}">
+      ${note.image ? `<img src="${note.image}" class="note-card-image" alt="">` : ""}
+      <div class="note-card-top">
+        ${label ? `<span class="note-card-label"><i class="cat-dot"></i>${label}</span>` : "<span></span>"}
+        ${trash ? "" : `<button type="button" class="note-card-pin${note.pinned ? " active" : ""}" data-action="pin" title="${note.pinned ? "Открепить" : "Закрепить сверху"}">${NOTE_ICONS.pin}</button>`}
+      </div>
+      ${note.title ? `<div class="note-card-title">${escapeHtml(note.title)}</div>` : ""}
+      ${note.text ? `<div class="note-card-text">${escapeHtml(note.text)}</div>` : ""}
+      ${checklist.length ? `
+        <div class="note-card-checklist">
+          ${checklist.slice(0, 4).map(i => `<div class="note-card-check${i.done ? " done" : ""}"><span></span>${escapeHtml(i.text)}</div>`).join("")}
+          <div class="note-card-check-count">${done} из ${checklist.length}${checklist.length > 4 ? ` · ещё ${checklist.length - 4}` : ""}</div>
+        </div>` : ""}
+      ${note.asset ? `<div class="note-card-asset"><b>${escapeHtml(note.asset.ticker || note.asset.symbol)}</b> ${escapeHtml(note.asset.name)}</div>` : ""}
+      <div class="note-card-date">${trash ? `В корзине с ${formatNoteDate(note.deletedAt)}` : `Изменено ${formatNoteDate(note.updatedAt)}`}</div>
+      ${trash ? `
+        <div class="note-card-trash-actions">
+          <button type="button" class="savings-btn-primary" data-action="restore">Восстановить</button>
+          <button type="button" class="savings-btn-ghost" data-action="purge">Удалить навсегда</button>
+        </div>` : ""}
+    </div>
+  `;
+}
+
+function renderNotesLabels(active) {
+  const el = document.getElementById("notesLabels");
+  if (notesView.trash) {
+    el.innerHTML = "";
+    return;
+  }
+  const chip = (key, label, count) => `
+    <button type="button" class="events-chip${key !== "all" ? ` note-label-${key}` : ""}${notesView.label === key ? " active" : ""}" data-filter="${key}">
+      ${key !== "all" ? `<i class="cat-dot"></i>` : ""}${label} <span class="events-chip-count">${count}</span>
+    </button>
+  `;
+  el.innerHTML = chip("all", "Все", active.length)
+    + Object.entries(NOTE_LABELS).map(([key, label]) => chip(key, label, active.filter(n => n.label === key).length)).join("");
 }
 
 function renderNotes() {
   const grid = document.getElementById("notesGrid");
-  const notes = loadNotes().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const metaEl = document.getElementById("notesMeta");
+  const all = loadNotes();
+  const active = all.filter(n => !n.deletedAt);
+  const trash = all.filter(n => n.deletedAt);
+  const query = document.getElementById("notesSearch").value.trim();
 
-  if (notes.length === 0) {
-    grid.innerHTML = `<div class="notes-empty">Пока нет заметок — создайте первую</div>`;
+  const trashBtn = document.getElementById("notesTrashBtn");
+  trashBtn.textContent = notesView.trash ? "← Ко всем заметкам" : `Корзина${trash.length ? ` · ${trash.length}` : ""}`;
+  trashBtn.classList.toggle("active", notesView.trash);
+  document.getElementById("notesSort").value = notesView.sort;
+  renderNotesLabels(active);
+
+  // Подсказка «Вернуть» после удаления
+  const undoNote = notesUndoId && trash.find(n => n.id === notesUndoId);
+  metaEl.innerHTML = undoNote
+    ? `<span>Заметка «${escapeHtml(noteHeadline(undoNote))}» в корзине.</span> <button type="button" class="events-link-btn" data-action="undo">Вернуть</button>`
+    : "";
+
+  if (notesView.trash) {
+    const list = sortNotes(trash.filter(n => noteMatches(n, query)));
+    grid.innerHTML = `
+      <div class="notes-trash-head">
+        <span>Заметки удаляются навсегда через ${NOTES_TRASH_DAYS} дней после попадания в корзину.</span>
+        ${trash.length ? `<button type="button" class="savings-btn-ghost" data-action="empty-trash">Очистить корзину</button>` : ""}
+      </div>
+      ${list.length
+        ? `<div class="notes-grid">${list.map(n => noteCardHtml(n, true)).join("")}</div>`
+        : `<div class="notes-empty">Корзина пуста</div>`}
+    `;
     return;
   }
 
-  grid.innerHTML = "";
-  notes.forEach(note => {
-    const card = document.createElement("div");
-    card.className = "note-card";
-    card.innerHTML = `
-      ${note.image ? `<img src="${note.image}" class="note-card-image">` : ""}
-      ${note.title ? `<div class="note-card-title">${escapeHtml(note.title)}</div>` : ""}
-      <div class="note-card-text">${escapeHtml(note.text || "")}</div>
-      <div class="note-card-date">${formatNoteDate(note.updatedAt)}</div>
-      <button type="button" class="note-card-delete" title="Удалить">✕</button>
+  if (!active.length) {
+    grid.innerHTML = `
+      <div class="notes-empty">
+        <div class="notes-empty-icon">${NOTE_ICONS.note}</div>
+        <div>Пока нет заметок — создайте первую</div>
+        <button type="button" class="notes-empty-btn" data-action="new">+ Новая заметка</button>
+      </div>
     `;
-    card.addEventListener("click", () => openNoteModal(note));
-    card.querySelector(".note-card-delete").addEventListener("click", e => {
-      e.stopPropagation();
-      saveNotes(loadNotes().filter(n => n.id !== note.id));
-      renderNotes();
-    });
-    grid.appendChild(card);
-  });
+    return;
+  }
+
+  const shown = sortNotes(active.filter(n =>
+    (notesView.label === "all" || n.label === notesView.label) && noteMatches(n, query)));
+  if (!shown.length) {
+    grid.innerHTML = `<div class="notes-empty">${query ? `Ничего не найдено по запросу «${escapeHtml(query)}»` : "С этой меткой заметок пока нет"}</div>`;
+    return;
+  }
+
+  const pinned = shown.filter(n => n.pinned);
+  const rest = shown.filter(n => !n.pinned);
+  const section = (title, list) => list.length ? `
+    ${title ? `<div class="notes-section-title">${title}</div>` : ""}
+    <div class="notes-grid">${list.map(n => noteCardHtml(n, false)).join("")}</div>
+  ` : "";
+  grid.innerHTML = pinned.length
+    ? section("Закреплённые", pinned) + section("Остальные", rest)
+    : section("", rest);
 }
 
-document.getElementById("noteNewBtn").addEventListener("click", () => openNoteModal(null));
-document.getElementById("noteModalCloseBtn").addEventListener("click", closeNoteModal);
-document.getElementById("noteModalOverlay").addEventListener("click", e => {
-  if (e.target.id === "noteModalOverlay") closeNoteModal();
-});
+// ---- События ----
+(() => {
+  const grid = document.getElementById("notesGrid");
 
-document.getElementById("noteSaveBtn").addEventListener("click", () => {
-  const title = document.getElementById("noteTitleInput").value.trim();
-  const text = document.getElementById("noteTextInput").value.trim();
-  if (!title && !text && !notesPendingImage) {
-    closeNoteModal();
-    return;
-  }
+  grid.addEventListener("click", e => {
+    const actionBtn = e.target.closest("[data-action]");
+    const card = e.target.closest(".note-card");
+    const action = actionBtn ? actionBtn.dataset.action : null;
 
-  const notes = loadNotes();
-  const now = new Date().toISOString();
-  if (notesEditingId) {
-    const note = notes.find(n => n.id === notesEditingId);
-    if (note) {
-      note.title = title;
-      note.text = text;
-      note.image = notesPendingImage;
-      note.updatedAt = now;
+    if (action === "new") return openNoteModal(null);
+    if (action === "empty-trash") {
+      if (confirm("Удалить все заметки из корзины навсегда?")) {
+        saveNotes(loadNotes().filter(n => !n.deletedAt));
+        renderNotes();
+      }
+      return;
     }
-  } else {
-    notes.push({
-      id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
-      title, text, image: notesPendingImage,
-      updatedAt: now,
-    });
-  }
-  saveNotes(notes);
-  renderNotes();
-  closeNoteModal();
-});
+    if (!card) return;
+    const id = card.dataset.id;
 
-document.getElementById("noteDeleteBtn").addEventListener("click", () => {
-  if (!notesEditingId) return;
-  saveNotes(loadNotes().filter(n => n.id !== notesEditingId));
-  renderNotes();
-  closeNoteModal();
-});
+    if (action === "pin") {
+      const notes = loadNotes();
+      const note = notes.find(n => n.id === id);
+      note.pinned = !note.pinned;
+      saveNotes(notes);
+      renderNotes();
+    } else if (action === "restore") {
+      restoreNote(id);
+    } else if (action === "purge") {
+      if (confirm("Удалить заметку навсегда? Вернуть её будет нельзя.")) {
+        saveNotes(loadNotes().filter(n => n.id !== id));
+        renderNotes();
+      }
+    } else if (!notesView.trash) {
+      const note = loadNotes().find(n => n.id === id);
+      if (note) openNoteModal(note);
+    }
+  });
 
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape") closeNoteModal();
-});
+  document.getElementById("notesMeta").addEventListener("click", e => {
+    if (e.target.closest('[data-action="undo"]') && notesUndoId) restoreNote(notesUndoId);
+  });
+
+  document.getElementById("notesLabels").addEventListener("click", e => {
+    const chip = e.target.closest("[data-filter]");
+    if (!chip) return;
+    notesView.label = chip.dataset.filter;
+    saveNotesView();
+    renderNotes();
+  });
+
+  document.getElementById("notesSearch").addEventListener("input", renderNotes);
+  document.getElementById("notesSort").addEventListener("change", e => {
+    notesView.sort = e.target.value;
+    saveNotesView();
+    renderNotes();
+  });
+  document.getElementById("notesTrashBtn").addEventListener("click", () => {
+    notesView.trash = !notesView.trash;
+    renderNotes();
+  });
+  document.getElementById("noteNewBtn").addEventListener("click", () => openNoteModal(null));
+
+  // Редактор
+  document.getElementById("noteTitleInput").addEventListener("input", e => {
+    noteDraft.title = e.target.value;
+    scheduleNoteSave();
+  });
+  document.getElementById("noteTextInput").addEventListener("input", e => {
+    noteDraft.text = e.target.value;
+    scheduleNoteSave();
+  });
+
+  document.getElementById("notePinBtn").addEventListener("click", () => {
+    noteDraft.pinned = !noteDraft.pinned;
+    renderNotePin();
+    persistNoteDraft();
+  });
+
+  document.getElementById("noteChecklistInput").addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const text = e.target.value.trim();
+    if (!text) return;
+    noteDraft.checklist.push({ id: newNoteId(), text, done: false });
+    e.target.value = "";
+    renderNoteChecklist();
+    persistNoteDraft();
+  });
+
+  const checklistEl = document.getElementById("noteChecklist");
+  checklistEl.addEventListener("click", e => {
+    const btn = e.target.closest("[data-action]");
+    const row = e.target.closest(".note-check-item");
+    if (!btn || !row) return;
+    const item = noteDraft.checklist.find(i => i.id === row.dataset.id);
+    if (!item) return;
+    if (btn.dataset.action === "toggle") {
+      item.done = !item.done;
+    } else if (btn.dataset.action === "remove") {
+      noteDraft.checklist = noteDraft.checklist.filter(i => i !== item);
+    } else if (btn.dataset.action === "planner") {
+      if (!item.text.trim()) return;
+      addTask(item.text.trim(), toDateKey(new Date()));
+      refreshTaskViews();
+      showNoteFlash(`«${item.text.trim()}» добавлено в ежедневник на сегодня`);
+      return;
+    }
+    renderNoteChecklist();
+    persistNoteDraft();
+  });
+  checklistEl.addEventListener("input", e => {
+    const row = e.target.closest(".note-check-item");
+    if (!row || !e.target.classList.contains("note-check-text")) return;
+    const item = noteDraft.checklist.find(i => i.id === row.dataset.id);
+    if (item) {
+      item.text = e.target.value;
+      scheduleNoteSave();
+    }
+  });
+
+  document.getElementById("noteLabels").addEventListener("click", e => {
+    const chip = e.target.closest("[data-label]");
+    if (!chip) return;
+    noteDraft.label = noteDraft.label === chip.dataset.label ? null : chip.dataset.label;
+    renderNoteLabels();
+    persistNoteDraft();
+  });
+
+  noteAssetPicker = setupAssetPicker({
+    input: document.getElementById("noteAssetInput"),
+    list: document.getElementById("noteAssetList"),
+    search: q => searchAssets(q),
+    searchRemote: q => searchAssetsRemote(q),
+    onOpen: () => ensureMoexList(),
+    onSelect: asset => {
+      noteDraft.asset = assetMeta(asset);
+      renderNoteAsset();
+      persistNoteDraft();
+    },
+  });
+  document.getElementById("noteAssetChip").addEventListener("click", e => {
+    const btn = e.target.closest("[data-action]");
+    if (!btn || !noteDraft) return;
+    if (btn.dataset.action === "unlink") {
+      noteDraft.asset = null;
+      renderNoteAsset();
+      persistNoteDraft();
+    } else if (btn.dataset.action === "chart") {
+      const asset = noteDraft.asset;
+      closeNoteModal();
+      openChartsFor(asset);
+    }
+  });
+
+  document.getElementById("notePlannerBtn").addEventListener("click", () => {
+    const row = document.getElementById("notePlannerRow");
+    row.hidden = !row.hidden;
+    if (!row.hidden) document.getElementById("notePlannerDate").value = toDateKey(new Date());
+  });
+  document.getElementById("notePlannerAddBtn").addEventListener("click", () => {
+    const date = document.getElementById("notePlannerDate").value;
+    if (!date || !noteDraft) return;
+    const text = noteHeadline(noteDraft);
+    addTask(text, date);
+    refreshTaskViews();
+    document.getElementById("notePlannerRow").hidden = true;
+    showNoteFlash(`«${text}» добавлено в ежедневник на ${formatDeadline(date)}`);
+  });
+
+  document.getElementById("noteSaveBtn").addEventListener("click", closeNoteModal);
+  document.getElementById("noteRevertBtn").addEventListener("click", revertNote);
+  document.getElementById("noteDeleteBtn").addEventListener("click", () => {
+    if (!noteDraft) return;
+    const id = noteDraft.id;
+    persistNoteDraft();
+    document.getElementById("noteModalOverlay").classList.remove("open");
+    noteDraft = null;
+    noteSnapshot = null;
+    trashNote(id);
+  });
+  document.getElementById("noteModalCloseBtn").addEventListener("click", closeNoteModal);
+  document.getElementById("noteModalOverlay").addEventListener("click", e => {
+    if (e.target.id === "noteModalOverlay") closeNoteModal();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeNoteModal();
+  });
+  // Закрыли вкладку браузера посреди набора — сохраняем сразу
+  window.addEventListener("beforeunload", () => {
+    if (noteSaveTimer) persistNoteDraft();
+  });
+})();
 
 // ---------- Сырьё и металлы ----------
 const TROY_OUNCE_GRAMS = 31.1035;
@@ -5317,6 +5757,7 @@ function watchRowHtml(asset) {
       <div class="watch-actions">
         <button type="button" class="watch-action" data-action="chart">График</button>
         ${TRADABLE_KINDS.includes(asset.kind) ? `<button type="button" class="watch-action" data-action="buy">Купить</button>` : ""}
+        <button type="button" class="watch-action" data-action="note" title="Заметка: почему я слежу за этим активом">Заметка</button>
       </div>
     </div>
   `;
@@ -5354,6 +5795,7 @@ function renderWatchlist() {
     row.addEventListener("click", e => {
       const action = e.target.closest(".watch-action");
       if (action && action.dataset.action === "buy") openPortfolioTrade(asset, "buy");
+      else if (action && action.dataset.action === "note") openAssetNote(asset);
       else openChartsFor(asset);
     });
   });
@@ -5659,7 +6101,10 @@ function chartStatHtml(s, period) {
       <div class="chart-stat-value">${formatMoney(last, s.currency)}</div>
       <div class="chart-stat-change">${formatChange((last / first - 1) * 100)} <span>${formatSignedMoney(last - first, s.currency)} ${periodInfo(period).words}</span></div>
       <div class="chart-stat-range">мин. ${formatMoney(Math.min(...values), s.currency)} · макс. ${formatMoney(Math.max(...values), s.currency)}</div>
-      ${tradable ? `<button type="button" class="events-link-btn chart-stat-buy" data-id="${escapeAttr(s.asset.id)}">Купить в виртуальный портфель →</button>` : ""}
+      <div class="chart-stat-links">
+        ${tradable ? `<button type="button" class="events-link-btn chart-stat-buy" data-id="${escapeAttr(s.asset.id)}">Купить в виртуальный портфель →</button>` : ""}
+        <button type="button" class="events-link-btn chart-stat-note" data-id="${escapeAttr(s.asset.id)}">Заметка →</button>
+      </div>
     </div>
   `;
 }
@@ -5741,6 +6186,9 @@ async function renderCharts() {
   statsEl.innerHTML = ok.map(s => chartStatHtml(s, period)).join("");
   statsEl.querySelectorAll(".chart-stat-buy").forEach(btn => {
     btn.addEventListener("click", () => openPortfolioTrade(ok.find(s => s.asset.id === btn.dataset.id).asset, "buy"));
+  });
+  statsEl.querySelectorAll(".chart-stat-note").forEach(btn => {
+    btn.addEventListener("click", () => openAssetNote(ok.find(s => s.asset.id === btn.dataset.id).asset));
   });
 
   legendEl.innerHTML = ok.length > 1
