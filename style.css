@@ -57,7 +57,8 @@ body {
 
 :root[data-theme="light"] .sidebar,
 :root[data-theme="light"] .settings-block,
-:root[data-theme="light"] .savings-summary,
+:root[data-theme="light"] .savings-stat,
+:root[data-theme="light"] .savings-form-panel,
 :root[data-theme="light"] .savings-chart,
 :root[data-theme="light"] .savings-card,
 :root[data-theme="light"] .market-item,
@@ -605,15 +606,92 @@ button:hover { background: var(--accent-hover); }
 
 /* ---------- Savings ---------- */
 .savings-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.savings-summary:empty {
+  display: none;
+}
+
+.savings-stat {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  margin-bottom: 20px;
+  border-radius: 14px;
+  padding: 14px 16px;
+  min-width: 0;
+}
+.savings-stat-label {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.savings-stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 4px 0 2px;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.savings-stat-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.savings-form-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 18px 18px;
+  margin-bottom: 18px;
+}
+.savings-form-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.savings-templates {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.savings-templates .events-chip {
+  padding: 5px 11px;
+  font-size: 12px;
+}
+
+.savings-form {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+.savings-form .field {
+  grid-column: span 2;
+  min-width: 0;
+}
+.savings-form .savings-field-name {
+  grid-column: span 4;
+}
+.savings-form input {
+  width: 100%;
+  min-width: 0;
+}
+.savings-submit {
+  grid-column: 1 / -1;
+  padding: 11px;
+  font-weight: 700;
+}
+
+.input-invalid,
+input.input-invalid {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent);
 }
 
 .savings-chart {
@@ -629,7 +707,7 @@ button:hover { background: var(--accent-hover); }
   margin: 0;
 }
 .savings-chart:not(:empty) {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .savings-chart-title {
@@ -665,21 +743,33 @@ button:hover { background: var(--accent-hover); }
   margin-top: 6px;
 }
 
-.savings-summary-label {
-  color: var(--text-dim);
-  font-size: 13px;
+.savings-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
 }
-
-.savings-summary-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--accent);
+.savings-toolbar:empty {
+  display: none;
 }
-
-.savings-summary-note {
-  color: var(--text-dim);
+.savings-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.savings-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 12px;
-  width: 100%;
+  color: var(--text-dim);
+}
+.savings-sort select {
+  min-width: 0;
+  padding: 7px 10px;
+  font-size: 13px;
 }
 
 .savings-list {
@@ -689,31 +779,126 @@ button:hover { background: var(--accent-hover); }
 }
 
 .savings-card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 16px;
   padding: 16px 18px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-
 .savings-card--soon {
   border-color: #d9a441;
 }
-
 .savings-card--overdue {
   border-color: var(--danger);
+}
+.savings-card--done {
+  border-color: color-mix(in srgb, var(--success) 55%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--success) 12%, transparent), transparent 60%),
+    var(--surface);
+}
+.savings-card--celebrate {
+  animation: savings-celebrate 1.6s ease-out;
+}
+@keyframes savings-celebrate {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 60%, transparent); transform: scale(1); }
+  20% { transform: scale(1.015); }
+  100% { box-shadow: 0 0 0 18px transparent; transform: scale(1); }
 }
 
 .savings-card-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
 }
-
+.savings-card-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 .savings-card-name {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: break-word;
+}
+
+.savings-card-tools {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.savings-icon-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+}
+.savings-icon-btn svg {
+  width: 17px;
+  height: 17px;
+}
+.savings-icon-btn:hover,
+.savings-icon-btn.active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.savings-icon-btn.danger:hover,
+.savings-icon-btn.danger.active {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+
+.savings-done-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px 3px 6px;
+  border-radius: 999px;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+}
+.savings-done-badge svg {
+  width: 15px;
+  height: 15px;
+}
+
+.savings-amounts {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.savings-current {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.savings-target {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+.savings-percent {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.savings-card--done .savings-percent {
+  color: var(--success);
 }
 
 .savings-progress-bar {
@@ -723,12 +908,16 @@ button:hover { background: var(--accent-hover); }
   overflow: hidden;
   margin-bottom: 8px;
 }
+.savings-progress-bar--lg {
+  height: 10px;
+  margin-bottom: 12px;
+}
 
 .savings-progress-fill {
   height: 100%;
   background: var(--accent);
   border-radius: 999px;
-  transition: width 0.2s;
+  transition: width 0.4s ease;
 }
 
 .savings-progress-fill.complete {
@@ -741,20 +930,39 @@ button:hover { background: var(--accent-hover); }
   margin-bottom: 12px;
 }
 
-.savings-card-footer {
+.savings-facts {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+.savings-facts b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.savings-fact-warn {
+  color: var(--danger);
+}
+.savings-fact-dim {
+  font-size: 12px;
+}
+
+.savings-flash {
+  font-size: 13px;
+  color: var(--success);
+  margin: -4px 0 10px;
 }
 
 .savings-deadline-badge {
   font-size: 12px;
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--text-dim);
+  white-space: nowrap;
 }
 
 .savings-deadline-badge.soon {
@@ -769,33 +977,144 @@ button:hover { background: var(--accent-hover); }
 
 .savings-card-actions {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
-
-.savings-topup-btn {
+.savings-action {
+  width: auto;
+  padding: 7px 12px;
+  font-size: 13px;
   background: var(--surface-2);
   color: var(--text);
-  padding: 6px 12px;
-  font-size: 13px;
-  border-radius: var(--radius);
+  border: 1px solid var(--border);
 }
-.savings-topup-btn:hover { background: var(--border); }
+.savings-action:hover:not(:disabled),
+.savings-action.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.savings-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 
-.savings-topup-form {
-  display: flex;
-  gap: 8px;
+.savings-panel {
   margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.savings-panel-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.savings-panel-row input {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.savings-panel-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.savings-panel-hints .events-chip {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.savings-panel-text {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.savings-panel-error {
+  font-size: 13px;
+  color: var(--danger);
+}
+.savings-panel-error:empty {
+  display: none;
 }
 
-.savings-topup-form input {
-  flex: 1;
+.savings-btn-primary,
+.savings-btn-danger,
+.savings-btn-ghost {
+  width: auto;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.savings-btn-danger {
+  background: var(--danger);
+}
+.savings-btn-danger:hover {
+  background: color-mix(in srgb, var(--danger) 85%, #000);
+}
+.savings-btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.savings-btn-ghost:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.savings-confirm {
+  font-size: 13px;
+}
+
+.savings-edit-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 90px 1fr;
+  gap: 8px;
+}
+.savings-edit-grid .field span {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.savings-edit-grid input {
+  width: 100%;
   min-width: 0;
+}
+
+.savings-history {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.savings-history-row {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.savings-history-row:last-child {
+  border-bottom: none;
+}
+.savings-history-date,
+.savings-history-kind {
+  color: var(--text-dim);
+}
+.savings-history-row b {
+  font-variant-numeric: tabular-nums;
+}
+.savings-history-empty {
+  font-size: 13px;
+  color: var(--text-dim);
 }
 
 .savings-empty {
   text-align: center;
   padding: 50px 20px;
   color: var(--text-dim);
+}
+.savings-empty--small {
+  padding: 30px 20px;
 }
 
 .savings-empty-icon {
@@ -805,6 +1124,19 @@ button:hover { background: var(--accent-hover); }
 .savings-empty-icon svg {
   width: 64px;
   height: auto;
+}
+
+@media (max-width: 640px) {
+  .savings-summary {
+    grid-template-columns: 1fr;
+  }
+  .savings-form .field,
+  .savings-form .savings-field-name {
+    grid-column: 1 / -1;
+  }
+  .savings-edit-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* ---------- Market ---------- */

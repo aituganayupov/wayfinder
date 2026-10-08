@@ -398,21 +398,19 @@ function renderHomeSavings() {
     return;
   }
 
-  let totalUsd = 0;
+  let totalRub = 0;
   items.forEach(item => {
-    const usd = toUSD(item.current, item.currency);
-    if (usd !== null) totalUsd += usd;
+    const rub = savingsToRub(item.current, item.currency);
+    if (rub !== null) totalRub += rub;
   });
 
-  const top = [...items].sort((a, b) => {
-    const pa = a.target > 0 ? a.current / a.target : 0;
-    const pb = b.target > 0 ? b.current / b.target : 0;
-    return pb - pa;
-  })[0];
-  const percent = top.target > 0 ? Math.min(100, Math.round((top.current / top.target) * 100)) : 0;
+  // Показываем ближайшую к завершению активную цель (если все выполнены — любую)
+  const active = items.filter(i => !isSavingsDone(i));
+  const top = [...(active.length ? active : items)].sort((a, b) => savingsPercent(b) - savingsPercent(a))[0];
+  const percent = Math.min(100, Math.floor(savingsPercent(top)));
 
   el.innerHTML = `
-    <div class="home-savings-total">≈ $${totalUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+    <div class="home-savings-total">≈ ${savingsAmount(Math.round(totalRub), "RUB")}</div>
     <div class="home-savings-sub">Всего накоплено по всем целям</div>
     <div class="home-savings-top">
       <div class="savings-progress-bar"><div class="savings-progress-fill${percent >= 100 ? " complete" : ""}" style="width:${percent}%"></div></div>
@@ -1329,7 +1327,7 @@ function toUSD(amount, currency) {
 
 function populateCurrencySelects() {
   const savingsInput = document.getElementById("savingsCurrency");
-  if (!savingsInput.value) savingsInput.value = currencyList.includes("USD") ? "USD" : currencyList[0];
+  if (!savingsInput.value) savingsInput.value = currencyList.includes("RUB") ? "RUB" : currencyList[0];
   setupCurrencyArrowCycle(savingsInput);
   setupCurrencyPicker(savingsInput);
 }
@@ -1706,6 +1704,38 @@ document.getElementById("stocksSearch").addEventListener("input", () => {
 
 // ---------- Savings (накопления) ----------
 const SAVINGS_KEY = "savings_items";
+const SAVINGS_VIEW_KEY = "savings_view";
+const SAVINGS_SIGNS = { RUB: "₽", USD: "$", EUR: "€", GBP: "£", CNY: "¥", JPY: "¥", KZT: "₸", TRY: "₺", UAH: "₴" };
+const SAVINGS_TEMPLATES = [
+  { name: "Отпуск", hint: "150 000" },
+  { name: "Ноутбук", hint: "90 000" },
+  { name: "Телефон", hint: "60 000" },
+  { name: "Подушка безопасности", hint: "300 000" },
+  { name: "Машина", hint: "1 500 000" },
+  { name: "Ремонт", hint: "400 000" },
+  { name: "Обучение", hint: "100 000" },
+  { name: "Подарок", hint: "15 000" },
+];
+const SAVINGS_SORTS = {
+  deadline: "По сроку",
+  progress: "По прогрессу",
+  left: "По остатку",
+  newest: "Сначала новые",
+};
+const SAVINGS_ICONS = {
+  edit: `<svg viewBox="0 0 20 20" fill="none"><path d="M12.8 4.2l3 3L7.5 15.5l-3.6.6.6-3.6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M11 6l3 3" stroke="currentColor" stroke-width="1.5"/></svg>`,
+  trash: `<svg viewBox="0 0 20 20" fill="none"><path d="M4 6h12M8 6V4.5h4V6M6 6l.7 10h6.6L14 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  check: `<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.6"/><path d="M6.8 10.2l2.2 2.2 4.3-4.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+};
+
+let savingsView = { filter: "all", sort: "deadline" };
+try {
+  Object.assign(savingsView, JSON.parse(localStorage.getItem(SAVINGS_VIEW_KEY)) || {});
+} catch { /* настройки вида по умолчанию */ }
+
+const savingsOpen = {};      // id цели → открытая панель: deposit | withdraw | history | edit | delete | planner
+let savingsCelebrate = null; // цель, которая только что выполнена, — карточка поздравляет
+let savingsFlash = null;     // { id, text } — короткое сообщение в карточке
 
 function loadSavings() {
   let items;
@@ -1740,6 +1770,10 @@ function saveSavings(items) {
   localStorage.setItem(SAVINGS_KEY, JSON.stringify(items));
 }
 
+function saveSavingsView() {
+  try { localStorage.setItem(SAVINGS_VIEW_KEY, JSON.stringify(savingsView)); } catch { /* приватный режим */ }
+}
+
 function daysUntil(dateStr) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1753,30 +1787,108 @@ function formatDeadline(dateStr) {
   return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function renderSavingsSummary(items) {
-  const summaryEl = document.getElementById("savingsSummary");
+function savingsAmount(value, currency) {
+  const num = (Math.round(value * 100) / 100).toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+  return `${num} ${SAVINGS_SIGNS[currency] || currency}`;
+}
 
+function savingsToRub(amount, currency) {
+  if (currency === "RUB") return amount;
+  const usd = toUSD(amount, currency);
+  return usd !== null && usdRates && usdRates.RUB ? usd * usdRates.RUB : null;
+}
+
+function savingsPercent(item) {
+  return item.target > 0 ? (item.current / item.target) * 100 : 0;
+}
+
+function isSavingsDone(item) {
+  return item.target > 0 && item.current >= item.target;
+}
+
+function daysWord(n) {
+  return `${n} ${pluralRu(n, "день", "дня", "дней")}`;
+}
+
+// Сколько откладывать, чтобы успеть к сроку
+function savingsPlan(item) {
+  const left = item.target - item.current;
+  if (!item.deadline || left <= 0) return null;
+  const days = daysUntil(item.deadline);
+  if (days <= 0) return { overdue: true };
+  const round = v => (v >= 10 ? Math.ceil(v) : Math.ceil(v * 100) / 100);
+  if (days >= 45) return { amount: round(left / (days / 30.44)), per: "в месяц", alt: round(left / (days / 7)), altPer: "в неделю" };
+  if (days >= 10) return { amount: round(left / (days / 7)), per: "в неделю", alt: round(left / days), altPer: "в день" };
+  return { amount: round(left / days), per: "в день" };
+}
+
+function validateSavingsGoal({ name, target, current, currency }) {
+  if (!name) return { field: "name", msg: "Введите название цели." };
+  if (!(target > 0)) return { field: "target", msg: "Укажите целевую сумму больше нуля." };
+  if (isNaN(current) || current < 0) return { field: "current", msg: "Накопленная сумма не может быть отрицательной." };
+  if (currencyList.length && !currencyList.includes(currency)) {
+    return { field: "currency", msg: "Неизвестный код валюты. Проверьте написание (напр. RUB, USD, EUR)." };
+  }
+  if (current > target) {
+    return {
+      field: "current",
+      msg: `Уже накоплено больше цели (${savingsAmount(current, currency)} > ${savingsAmount(target, currency)}). Увеличьте целевую сумму или уменьшите накопленное.`,
+    };
+  }
+  return null;
+}
+
+function renderSavingsSummary(items) {
+  const el = document.getElementById("savingsSummary");
+
+  // Пока целей нет — сводка не нужна
   if (items.length === 0) {
-    summaryEl.innerHTML = "";
+    el.innerHTML = "";
     return;
   }
 
-  let totalUsd = 0;
+  let totalRub = 0;
+  let targetRub = 0;
   let missing = false;
-
   items.forEach(item => {
-    const usd = toUSD(item.current, item.currency);
-    if (usd === null) {
+    const current = savingsToRub(item.current, item.currency);
+    const target = savingsToRub(item.target, item.currency);
+    if (current === null || target === null) {
       missing = true;
     } else {
-      totalUsd += usd;
+      totalRub += current;
+      targetRub += target;
     }
   });
 
-  summaryEl.innerHTML = `
-    <span class="savings-summary-label">Всего накоплено (в пересчёте):</span>
-    <span class="savings-summary-value">≈ $${totalUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-    ${missing ? '<span class="savings-summary-note">Курс для некоторых валют пока не загружен — сумма может быть неточной.</span>' : ""}
+  const done = items.filter(isSavingsDone).length;
+  const nearest = items
+    .filter(i => i.deadline && !isSavingsDone(i) && daysUntil(i.deadline) >= 0)
+    .sort((a, b) => a.deadline.localeCompare(b.deadline))[0];
+
+  const totalPercent = targetRub > 0 ? Math.round((totalRub / targetRub) * 100) : 0;
+  let nearestSub = "сроки не указаны";
+  if (nearest) {
+    const days = daysUntil(nearest.deadline);
+    nearestSub = `${escapeHtml(nearest.name)} · ${days === 0 ? "сегодня" : `через ${daysWord(days)}`}`;
+  }
+
+  el.innerHTML = `
+    <div class="savings-stat">
+      <div class="savings-stat-label">Всего накоплено</div>
+      <div class="savings-stat-value">≈ ${savingsAmount(Math.round(totalRub), "RUB")}</div>
+      <div class="savings-stat-sub">из ${savingsAmount(Math.round(targetRub), "RUB")} · ${totalPercent}%${missing ? " · курсы части валют ещё загружаются" : ""}</div>
+    </div>
+    <div class="savings-stat">
+      <div class="savings-stat-label">Всего целей</div>
+      <div class="savings-stat-value">${items.length}</div>
+      <div class="savings-stat-sub">активных ${items.length - done} · выполнено ${done}</div>
+    </div>
+    <div class="savings-stat">
+      <div class="savings-stat-label">Ближайший срок</div>
+      <div class="savings-stat-value">${nearest ? formatDeadline(nearest.deadline) : "—"}</div>
+      <div class="savings-stat-sub">${nearestSub}</div>
+    </div>
   `;
 }
 
@@ -1787,8 +1899,8 @@ function renderSavingsChart(items) {
   const points = [];
   items.forEach(item => {
     (item.history || []).forEach(h => {
-      const usd = toUSD(h.amount, item.currency);
-      if (usd !== null) points.push({ date: h.date, usd });
+      const rub = savingsToRub(h.amount, item.currency);
+      if (rub !== null) points.push({ date: h.date, rub });
     });
   });
 
@@ -1798,18 +1910,22 @@ function renderSavingsChart(items) {
   }
 
   const byDate = new Map();
-  points.forEach(p => byDate.set(p.date, (byDate.get(p.date) || 0) + p.usd));
+  points.forEach(p => byDate.set(p.date, (byDate.get(p.date) || 0) + p.rub));
   const dates = [...byDate.keys()].sort();
+  if (dates.length < 2) {
+    el.innerHTML = "";
+    return;
+  }
 
   let running = 0;
   const series = dates.map(d => {
     running += byDate.get(d);
-    return { date: d, total: running };
+    return { date: d, total: Math.max(0, running) };
   });
 
   const width = 600, height = 120, pad = 6;
   const maxVal = Math.max(...series.map(p => p.total));
-  const stepX = series.length > 1 ? (width - pad * 2) / (series.length - 1) : 0;
+  const stepX = (width - pad * 2) / (series.length - 1);
 
   const coords = series.map((p, i) => {
     const x = pad + i * stepX;
@@ -1821,14 +1937,248 @@ function renderSavingsChart(items) {
   const areaPath = `M${pad},${height - pad} L${coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L")} L${width - pad},${height - pad} Z`;
 
   el.innerHTML = `
-    <div class="savings-chart-title">История накоплений (сумма в USD)</div>
+    <div class="savings-chart-title">Как росли накопления (все цели, в рублях)</div>
     <svg viewBox="0 0 ${width} ${height}" class="savings-chart-svg" preserveAspectRatio="none">
       <path d="${areaPath}" class="savings-chart-area"></path>
       <polyline points="${pointsAttr}" class="savings-chart-line"></polyline>
     </svg>
     <div class="savings-chart-range">
       <span>${formatDeadline(series[0].date)}</span>
-      <span>≈ $${maxVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+      <span>сейчас ≈ ${savingsAmount(Math.round(series[series.length - 1].total), "RUB")}</span>
+    </div>
+  `;
+}
+
+function renderSavingsToolbar(items) {
+  const el = document.getElementById("savingsToolbar");
+  if (items.length < 2) {
+    el.innerHTML = "";
+    return;
+  }
+  const done = items.filter(isSavingsDone).length;
+  const chip = (key, label, count) => `
+    <button type="button" class="events-chip${savingsView.filter === key ? " active" : ""}" data-filter="${key}">${label} <span class="events-chip-count">${count}</span></button>
+  `;
+  el.innerHTML = `
+    <div class="savings-filters">
+      ${chip("all", "Все", items.length)}
+      ${chip("active", "Активные", items.length - done)}
+      ${chip("done", "Выполненные", done)}
+    </div>
+    <label class="savings-sort">
+      <span>Сортировка</span>
+      <select id="savingsSort">
+        ${Object.entries(SAVINGS_SORTS).map(([key, label]) => `<option value="${key}"${savingsView.sort === key ? " selected" : ""}>${label}</option>`).join("")}
+      </select>
+    </label>
+  `;
+}
+
+function sortedSavings(items) {
+  const list = items.filter(item => {
+    if (savingsView.filter === "active") return !isSavingsDone(item);
+    if (savingsView.filter === "done") return isSavingsDone(item);
+    return true;
+  });
+  const leftRub = i => savingsToRub(Math.max(0, i.target - i.current), i.currency) ?? 0;
+  const sorters = {
+    deadline: (a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999"),
+    progress: (a, b) => savingsPercent(b) - savingsPercent(a),
+    left: (a, b) => leftRub(a) - leftRub(b),
+    newest: (a, b) => Number(b.id) - Number(a.id),
+  };
+  const sorter = sorters[savingsView.sort] || sorters.deadline;
+  // Выполненные цели — в конце списка (кроме сортировки по прогрессу)
+  return list.sort((a, b) => {
+    if (savingsView.sort !== "progress" && isSavingsDone(a) !== isSavingsDone(b)) return isSavingsDone(a) ? 1 : -1;
+    return sorter(a, b);
+  });
+}
+
+function savingsHistoryHtml(item) {
+  const history = [...(item.history || [])].reverse().slice(0, 30);
+  if (!history.length) return `<div class="savings-history-empty">Пополнений пока не было</div>`;
+  return `
+    <div class="savings-history">
+      ${history.map(h => `
+        <div class="savings-history-row">
+          <span class="savings-history-date">${formatDeadline(h.date)}</span>
+          <span class="savings-history-kind">${h.initial ? "Начальная сумма" : h.amount >= 0 ? "Пополнение" : "Снятие"}</span>
+          <b class="${h.amount >= 0 ? "pnl up" : "pnl down"}">${h.amount >= 0 ? "+" : "−"}${savingsAmount(Math.abs(h.amount), item.currency)}</b>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function nextMonthStart() {
+  const d = new Date();
+  return toDateKey(new Date(d.getFullYear(), d.getMonth() + 1, 1));
+}
+
+function savingsPanelHtml(item, panel) {
+  const plan = savingsPlan(item);
+  const cur = escapeAttr(item.currency);
+  const error = `<div class="savings-panel-error"></div>`;
+
+  if (panel === "deposit" || panel === "withdraw") {
+    const deposit = panel === "deposit";
+    const left = item.target - item.current;
+    const hints = [];
+    if (deposit && plan && plan.amount) hints.push({ value: plan.amount, label: `${savingsAmount(plan.amount, item.currency)} — план ${plan.per}` });
+    if (deposit && left > 0) hints.push({ value: Math.round(left * 100) / 100, label: `${savingsAmount(left, item.currency)} — сразу до цели` });
+    if (!deposit && item.current > 0) hints.push({ value: item.current, label: `всё: ${savingsAmount(item.current, item.currency)}` });
+    return `
+      <form class="savings-panel" data-form="${panel}">
+        <div class="savings-panel-row">
+          <input type="number" name="amount" min="0" step="any" placeholder="Сумма, ${cur}">
+          <button type="submit" class="${deposit ? "savings-btn-primary" : "savings-btn-danger"}">${deposit ? "Пополнить" : "Снять"}</button>
+          <button type="button" class="savings-btn-ghost" data-action="close">Отмена</button>
+        </div>
+        ${hints.length ? `<div class="savings-panel-hints">${hints.map(h => `<button type="button" class="events-chip" data-action="fill" data-value="${h.value}">${h.label}</button>`).join("")}</div>` : ""}
+        ${error}
+      </form>
+    `;
+  }
+
+  if (panel === "history") {
+    return `<div class="savings-panel">${savingsHistoryHtml(item)}</div>`;
+  }
+
+  if (panel === "edit") {
+    return `
+      <form class="savings-panel savings-edit" data-form="edit">
+        <div class="savings-edit-grid">
+          <label class="field"><span>Название</span><input type="text" name="name" maxlength="60" value="${escapeAttr(item.name)}"></label>
+          <label class="field"><span>Целевая сумма</span><input type="number" name="target" min="0" step="any" value="${item.target}"></label>
+          <label class="field"><span>Валюта</span><input type="text" name="currency" maxlength="5" value="${cur}"></label>
+          <label class="field"><span>Срок</span><input type="date" name="deadline" value="${item.deadline || ""}"></label>
+        </div>
+        <div class="savings-panel-row">
+          <button type="submit" class="savings-btn-primary">Сохранить</button>
+          <button type="button" class="savings-btn-ghost" data-action="close">Отмена</button>
+        </div>
+        ${error}
+      </form>
+    `;
+  }
+
+  if (panel === "delete") {
+    return `
+      <div class="savings-panel savings-confirm">
+        <span>Удалить цель «${escapeHtml(item.name)}» вместе с историей пополнений? Это нельзя отменить.</span>
+        <div class="savings-panel-row">
+          <button type="button" class="savings-btn-danger" data-action="confirm-delete">Удалить</button>
+          <button type="button" class="savings-btn-ghost" data-action="close">Отмена</button>
+        </div>
+      </div>
+    `;
+  }
+
+  if (panel === "planner") {
+    const date = plan && plan.per === "в месяц" ? nextMonthStart() : toDateKey(new Date(Date.now() + 7 * DAY_MS));
+    const amount = plan && plan.amount ? plan.amount : "";
+    return `
+      <form class="savings-panel" data-form="planner">
+        <div class="savings-panel-text">Добавим в ежедневник задачу «Пополнить «${escapeHtml(item.name)}»» на выбранный день.</div>
+        <div class="savings-panel-row">
+          <input type="date" name="date" value="${date}">
+          <input type="number" name="amount" min="0" step="any" placeholder="Сумма, ${cur}" value="${amount}">
+          <button type="submit" class="savings-btn-primary">Добавить</button>
+          <button type="button" class="savings-btn-ghost" data-action="close">Отмена</button>
+        </div>
+        ${error}
+      </form>
+    `;
+  }
+  return "";
+}
+
+function savingsCardHtml(item) {
+  const done = isSavingsDone(item);
+  const percent = savingsPercent(item);
+  const left = item.target - item.current;
+  const plan = savingsPlan(item);
+  const panel = savingsOpen[item.id];
+
+  const classes = ["savings-card"];
+  let badge = "";
+  if (done) {
+    classes.push("savings-card--done");
+    if (savingsCelebrate === item.id) classes.push("savings-card--celebrate");
+    badge = `<span class="savings-done-badge">${SAVINGS_ICONS.check} Цель выполнена!</span>`;
+  } else if (item.deadline) {
+    const diff = daysUntil(item.deadline);
+    if (diff < 0) {
+      classes.push("savings-card--overdue");
+      badge = `<span class="savings-deadline-badge overdue">Срок прошёл: ${formatDeadline(item.deadline)}</span>`;
+    } else if (diff <= 7) {
+      classes.push("savings-card--soon");
+      badge = `<span class="savings-deadline-badge soon">${diff === 0 ? "Срок сегодня" : `Осталось ${daysWord(diff)}`} · ${formatDeadline(item.deadline)}</span>`;
+    } else {
+      badge = `<span class="savings-deadline-badge">До ${formatDeadline(item.deadline)} · ${daysWord(diff)}</span>`;
+    }
+  }
+
+  const facts = [];
+  if (done) {
+    facts.push(left < 0 ? `Сверх цели <b>+${savingsAmount(-left, item.currency)}</b>` : "Собрана вся сумма");
+  } else {
+    facts.push(`Осталось <b>${savingsAmount(left, item.currency)}</b>`);
+    if (plan && plan.overdue) {
+      facts.push(`<span class="savings-fact-warn">Срок прошёл — продлите его или пополните цель</span>`);
+    } else if (plan) {
+      facts.push(`Откладывайте <b>≈ ${savingsAmount(plan.amount, item.currency)} ${plan.per}</b>${plan.alt ? ` (≈ ${savingsAmount(plan.alt, item.currency)} ${plan.altPer})` : ""}, чтобы успеть`);
+    } else {
+      facts.push(`<span class="savings-fact-dim">Укажите срок — посчитаем, сколько откладывать</span>`);
+    }
+  }
+  if (item.currency !== "RUB") {
+    const rub = savingsToRub(item.current, item.currency);
+    if (rub !== null) facts.push(`<span class="savings-fact-dim">≈ ${savingsAmount(Math.round(rub), "RUB")} по текущему курсу</span>`);
+  }
+
+  const historyCount = (item.history || []).length;
+  const action = (name, label, extra = "") => `
+    <button type="button" class="savings-action${panel === name ? " active" : ""}" data-action="${name}" ${extra}>${label}</button>
+  `;
+
+  return `
+    <div class="${classes.join(" ")}" data-id="${escapeAttr(item.id)}">
+      <div class="savings-card-header">
+        <div class="savings-card-title">
+          <span class="savings-card-name">${escapeHtml(item.name)}</span>
+          ${badge}
+        </div>
+        <div class="savings-card-tools">
+          <button type="button" class="savings-icon-btn${panel === "edit" ? " active" : ""}" data-action="edit" title="Редактировать">${SAVINGS_ICONS.edit}</button>
+          <button type="button" class="savings-icon-btn danger${panel === "delete" ? " active" : ""}" data-action="delete" title="Удалить">${SAVINGS_ICONS.trash}</button>
+        </div>
+      </div>
+
+      <div class="savings-amounts">
+        <div>
+          <span class="savings-current">${savingsAmount(item.current, item.currency)}</span>
+          <span class="savings-target">из ${savingsAmount(item.target, item.currency)}</span>
+        </div>
+        <span class="savings-percent">${Math.floor(percent)}%</span>
+      </div>
+      <div class="savings-progress-bar savings-progress-bar--lg">
+        <div class="savings-progress-fill${done ? " complete" : ""}" style="width:${Math.min(100, percent)}%"></div>
+      </div>
+
+      <div class="savings-facts">${facts.map(f => `<span>${f}</span>`).join("")}</div>
+
+      ${savingsFlash && savingsFlash.id === item.id ? `<div class="savings-flash">${escapeHtml(savingsFlash.text)}</div>` : ""}
+
+      <div class="savings-card-actions">
+        ${action("deposit", "+ Пополнить")}
+        ${action("withdraw", "− Снять", item.current > 0 ? "" : "disabled")}
+        ${action("history", `История${historyCount ? ` · ${historyCount}` : ""}`)}
+        ${done ? "" : action("planner", "Напомнить в ежедневнике")}
+      </div>
+
+      ${panel ? savingsPanelHtml(item, panel) : ""}
     </div>
   `;
 }
@@ -1839,8 +2189,8 @@ function renderSavings() {
 
   renderSavingsSummary(items);
   renderSavingsChart(items);
+  renderSavingsToolbar(items);
   if (typeof renderHomeSavings === "function") renderHomeSavings();
-  list.innerHTML = "";
 
   if (items.length === 0) {
     list.innerHTML = `
@@ -1859,127 +2209,187 @@ function renderSavings() {
             <path d="M9 40v2M35 40v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
           </svg>
         </div>
-        <div>Пока нет накоплений — добавьте первую цель</div>
+        <div>Пока нет целей — выберите шаблон выше или придумайте свою</div>
       </div>
     `;
     return;
   }
 
-  items.forEach(item => {
-    const target = item.target || 0;
-    const current = item.current || 0;
-    const percent = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+  const shown = sortedSavings(items);
+  list.innerHTML = shown.length
+    ? shown.map(savingsCardHtml).join("")
+    : `<div class="savings-empty savings-empty--small">${savingsView.filter === "done" ? "Выполненных целей пока нет" : "Все цели выполнены!"}</div>`;
 
-    let deadlineBadge = "";
-    let cardClass = "savings-card";
-    if (item.deadline) {
-      const diff = daysUntil(item.deadline);
-      if (diff < 0) {
-        cardClass += " savings-card--overdue";
-        deadlineBadge = `<span class="savings-deadline-badge overdue">Просрочено: ${formatDeadline(item.deadline)}</span>`;
-      } else if (diff <= 7) {
-        cardClass += " savings-card--soon";
-        deadlineBadge = `<span class="savings-deadline-badge soon">Осталось ${diff} дн. (${formatDeadline(item.deadline)})</span>`;
-      } else {
-        deadlineBadge = `<span class="savings-deadline-badge">Срок: ${formatDeadline(item.deadline)}</span>`;
-      }
-    }
-
-    const card = document.createElement("div");
-    card.className = cardClass;
-    card.innerHTML = `
-      <div class="savings-card-header">
-        <span class="savings-card-name">${escapeHtml(item.name)}</span>
-        <button class="remove-btn" title="Удалить">✕</button>
-      </div>
-      <div class="savings-progress-bar">
-        <div class="savings-progress-fill${percent >= 100 ? " complete" : ""}" style="width:${percent}%"></div>
-      </div>
-      <div class="savings-progress-label">${current.toLocaleString()} / ${target.toLocaleString()} ${item.currency} (${percent}%)</div>
-      <div class="savings-card-footer">
-        ${deadlineBadge || "<span></span>"}
-        <div class="savings-card-actions">
-          <button class="savings-topup-btn">+ Пополнить</button>
-        </div>
-      </div>
-      <div class="savings-topup-form" style="display:none">
-        <input type="number" min="0" step="any" placeholder="Сумма пополнения" class="savings-topup-input">
-        <button class="savings-topup-confirm">Добавить</button>
-      </div>
-    `;
-
-    card.querySelector(".remove-btn").addEventListener("click", () => {
-      const updated = loadSavings().filter(i => i.id !== item.id);
-      saveSavings(updated);
-      renderSavings();
-    });
-
-    const topupForm = card.querySelector(".savings-topup-form");
-    const topupInput = card.querySelector(".savings-topup-input");
-
-    card.querySelector(".savings-topup-btn").addEventListener("click", () => {
-      const isOpen = topupForm.style.display !== "none";
-      topupForm.style.display = isOpen ? "none" : "flex";
-      if (!isOpen) topupInput.focus();
-    });
-
-    function confirmTopup() {
-      const amount = parseFloat(topupInput.value);
-      if (isNaN(amount) || amount <= 0) return;
-
-      const updated = loadSavings();
-      const target = updated.find(i => i.id === item.id);
-      if (target) {
-        target.current = (target.current || 0) + amount;
-        if (!target.history) target.history = [];
-        target.history.push({ date: toDateKey(new Date()), amount });
-        saveSavings(updated);
-        renderSavings();
-      }
-    }
-
-    card.querySelector(".savings-topup-confirm").addEventListener("click", confirmTopup);
-    topupInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        confirmTopup();
-      }
-    });
-
-    list.appendChild(card);
-  });
+  // Поздравление и подсказка показываются один раз
+  savingsCelebrate = null;
+  savingsFlash = null;
 }
+
+function handleSavingsForm(kind, id, form) {
+  const items = loadSavings();
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const errorEl = form.querySelector(".savings-panel-error");
+  const fail = msg => { errorEl.textContent = msg; };
+
+  if (kind === "deposit" || kind === "withdraw") {
+    const amount = parseFloat(form.elements.amount.value);
+    if (!(amount > 0)) return fail("Введите сумму больше нуля.");
+    if (kind === "withdraw" && amount > item.current + 1e-9) {
+      return fail(`Можно снять не больше ${savingsAmount(item.current, item.currency)}.`);
+    }
+    const wasDone = isSavingsDone(item);
+    const signed = kind === "deposit" ? amount : -amount;
+    item.current = Math.round((item.current + signed) * 100) / 100;
+    item.history = item.history || [];
+    item.history.push({ date: toDateKey(new Date()), amount: signed, ts: Date.now() });
+    if (!wasDone && isSavingsDone(item)) savingsCelebrate = id;
+  } else if (kind === "edit") {
+    const name = form.elements.name.value.trim();
+    const target = parseFloat(form.elements.target.value);
+    const currency = form.elements.currency.value.trim().toUpperCase();
+    const problem = validateSavingsGoal({ name, target, current: item.current, currency });
+    if (problem) return fail(problem.msg);
+    const wasDone = isSavingsDone(item);
+    Object.assign(item, { name, target, currency, deadline: form.elements.deadline.value || null });
+    if (!wasDone && isSavingsDone(item)) savingsCelebrate = id;
+  } else if (kind === "planner") {
+    const date = form.elements.date.value;
+    const amount = parseFloat(form.elements.amount.value);
+    if (!date) return fail("Выберите дату напоминания.");
+    addTask(`Пополнить «${item.name}»${amount > 0 ? ` на ${savingsAmount(amount, item.currency)}` : ""}`, date);
+    renderPlanner();
+    renderHome();
+    savingsFlash = { id, text: `Напоминание добавлено в ежедневник на ${formatDeadline(date)}` };
+    delete savingsOpen[id];
+    renderSavings();
+    return;
+  }
+
+  delete savingsOpen[id];
+  saveSavings(items);
+  renderSavings();
+}
+
+// Шаблоны, фильтры и действия в карточках
+(() => {
+  const nameInput = document.getElementById("savingsName");
+  const targetInput = document.getElementById("savingsTarget");
+  const templatesEl = document.getElementById("savingsTemplates");
+  const list = document.getElementById("savingsList");
+  const toolbar = document.getElementById("savingsToolbar");
+
+  templatesEl.innerHTML = SAVINGS_TEMPLATES.map((t, i) => `
+    <button type="button" class="events-chip" data-template="${i}">${t.name}</button>
+  `).join("");
+  templatesEl.addEventListener("click", e => {
+    const btn = e.target.closest("[data-template]");
+    if (!btn) return;
+    const template = SAVINGS_TEMPLATES[Number(btn.dataset.template)];
+    nameInput.value = template.name;
+    nameInput.classList.remove("input-invalid");
+    targetInput.placeholder = template.hint;
+    targetInput.focus();
+  });
+
+  toolbar.addEventListener("click", e => {
+    const chip = e.target.closest("[data-filter]");
+    if (!chip) return;
+    savingsView.filter = chip.dataset.filter;
+    saveSavingsView();
+    renderSavings();
+  });
+  toolbar.addEventListener("change", e => {
+    if (e.target.id !== "savingsSort") return;
+    savingsView.sort = e.target.value;
+    saveSavingsView();
+    renderSavings();
+  });
+
+  list.addEventListener("click", e => {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    const card = btn.closest(".savings-card");
+    if (!card) return;
+    const id = card.dataset.id;
+    const action = btn.dataset.action;
+
+    if (action === "fill") {
+      card.querySelector('input[name="amount"]').value = btn.dataset.value;
+      return;
+    }
+    if (action === "close") {
+      delete savingsOpen[id];
+      renderSavings();
+      return;
+    }
+    if (action === "confirm-delete") {
+      saveSavings(loadSavings().filter(i => i.id !== id));
+      delete savingsOpen[id];
+      renderSavings();
+      return;
+    }
+
+    savingsOpen[id] = savingsOpen[id] === action ? null : action;
+    renderSavings();
+    const field = list.querySelector(`.savings-card[data-id="${CSS.escape(id)}"] .savings-panel input`);
+    if (field) field.focus();
+  });
+
+  list.addEventListener("submit", e => {
+    e.preventDefault();
+    const card = e.target.closest(".savings-card");
+    if (card) handleSavingsForm(e.target.dataset.form, card.dataset.id, e.target);
+  });
+})();
+
+document.getElementById("savingsForm").addEventListener("input", e => {
+  e.target.classList.remove("input-invalid");
+  document.getElementById("savingsFormError").textContent = "";
+});
 
 document.getElementById("savingsForm").addEventListener("submit", e => {
   e.preventDefault();
   const savingsCurrencyEl = document.getElementById("savingsCurrency");
-  const savingsErrorEl = document.getElementById("savingsFormError");
+  const errorEl = document.getElementById("savingsFormError");
+  const fields = {
+    name: document.getElementById("savingsName"),
+    target: document.getElementById("savingsTarget"),
+    current: document.getElementById("savingsCurrent"),
+    currency: savingsCurrencyEl,
+  };
+  Object.values(fields).forEach(f => f.classList.remove("input-invalid"));
 
-  const name = document.getElementById("savingsName").value.trim();
-  const target = parseFloat(document.getElementById("savingsTarget").value);
-  const current = parseFloat(document.getElementById("savingsCurrent").value) || 0;
+  const name = fields.name.value.trim();
+  const target = parseFloat(fields.target.value);
+  const current = fields.current.value === "" ? 0 : parseFloat(fields.current.value);
   const currency = savingsCurrencyEl.value.trim().toUpperCase();
   const deadline = document.getElementById("savingsDeadline").value || null;
 
-  if (savingsErrorEl) savingsErrorEl.textContent = "";
-
-  if (!name || isNaN(target) || target <= 0 || current < 0) return;
-
-  if (currencyList.length && !currencyList.includes(currency)) {
-    if (savingsErrorEl) {
-      savingsErrorEl.textContent = "Неизвестный код валюты. Проверьте написание (напр. USD, EUR, RUB).";
-    }
+  const problem = validateSavingsGoal({ name, target, current, currency });
+  if (problem) {
+    errorEl.textContent = problem.msg;
+    fields[problem.field].classList.add("input-invalid");
+    fields[problem.field].focus();
     return;
   }
+  errorEl.textContent = "";
 
   const items = loadSavings();
-  const newItem = { id: Date.now().toString(), name, target, current, currency, deadline };
-  if (current > 0) newItem.history = [{ date: toDateKey(new Date()), amount: current }];
+  const newItem = { id: Date.now().toString(), name, target, current, currency, deadline, history: [] };
+  if (current > 0) newItem.history.push({ date: toDateKey(new Date()), amount: current, initial: true, ts: Date.now() });
   items.push(newItem);
   saveSavings(items);
+  if (isSavingsDone(newItem)) savingsCelebrate = newItem.id;
+  // Новая цель должна быть видна, даже если включён фильтр «Выполненные»
+  if (savingsView.filter !== "all") {
+    savingsView.filter = "all";
+    saveSavingsView();
+  }
   renderSavings();
 
   e.target.reset();
+  fields.target.placeholder = "50 000";
   savingsCurrencyEl.value = currency;
 });
 

@@ -570,37 +570,42 @@
 
       <div id="savingsSummary" class="savings-summary"></div>
 
-      <form id="savingsForm" class="row">
-        <div class="field">
-          <label for="savingsName">Название</label>
-          <input type="text" id="savingsName" placeholder="Напр. Копилка на отпуск" required>
-        </div>
-        <div class="field">
-          <label for="savingsTarget">Целевая сумма</label>
-          <input type="number" id="savingsTarget" min="0" step="any" required>
-        </div>
-        <div class="field">
-          <label for="savingsCurrent">Уже накоплено</label>
-          <input type="number" id="savingsCurrent" min="0" step="any" value="0">
-        </div>
-        <div class="field">
-          <label for="savingsCurrency">Валюта</label>
-          <div class="currency-picker">
-            <input type="text" id="savingsCurrency" placeholder="Напр. USD" autocomplete="off">
-            <button type="button" class="currency-picker-toggle" data-for="savingsCurrency">▾</button>
-            <div class="currency-picker-list" data-for="savingsCurrency"></div>
+      <div class="savings-form-panel">
+        <div class="savings-form-title">Новая цель</div>
+        <div id="savingsTemplates" class="savings-templates"></div>
+        <form id="savingsForm" class="savings-form" novalidate>
+          <div class="field savings-field-name">
+            <label for="savingsName">Название</label>
+            <input type="text" id="savingsName" placeholder="Напр. Отпуск на море" maxlength="60" autocomplete="off">
           </div>
-        </div>
-        <div class="field">
-          <label for="savingsDeadline">Срок (необязательно)</label>
-          <input type="date" id="savingsDeadline">
-        </div>
-        <button type="submit">Добавить</button>
-      </form>
-      <div id="savingsFormError" class="error"></div>
+          <div class="field savings-field-currency">
+            <label for="savingsCurrency">Валюта</label>
+            <div class="currency-picker">
+              <input type="text" id="savingsCurrency" placeholder="Напр. RUB" autocomplete="off">
+              <button type="button" class="currency-picker-toggle" data-for="savingsCurrency">▾</button>
+              <div class="currency-picker-list" data-for="savingsCurrency"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="savingsTarget">Целевая сумма</label>
+            <input type="number" id="savingsTarget" min="0" step="any" placeholder="50 000">
+          </div>
+          <div class="field">
+            <label for="savingsCurrent">Уже накоплено</label>
+            <input type="number" id="savingsCurrent" min="0" step="any" placeholder="0">
+          </div>
+          <div class="field">
+            <label for="savingsDeadline">Срок (необязательно)</label>
+            <input type="date" id="savingsDeadline">
+          </div>
+          <button type="submit" class="savings-submit">Добавить цель</button>
+        </form>
+        <div id="savingsFormError" class="error"></div>
+      </div>
 
       <div id="savingsChart" class="savings-chart"></div>
 
+      <div id="savingsToolbar" class="savings-toolbar"></div>
       <div id="savingsList" class="savings-list"></div>
     </section>
 
