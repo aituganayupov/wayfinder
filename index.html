@@ -73,9 +73,6 @@
     <button class="tab-btn" data-tab="planner">
       <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="4" y="3" width="12" height="14" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M7 7h6M7 10h6M7 13h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Ежедневник
     </button>
-    <button class="tab-btn" data-tab="study">
-      <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M10 5.3C8.5 4.3 6.2 4 3.8 4.3v10.8c2.4-.3 4.7 0 6.2 1 1.5-1 3.8-1.3 6.2-1V4.3c-2.4-.3-4.7 0-6.2 1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 5.3v10.8" stroke="currentColor" stroke-width="1.5"/></svg></span> Учёба
-    </button>
     <button class="tab-btn" data-tab="weather">
       <span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="7" cy="6.5" r="2.3" stroke="currentColor" stroke-width="1.3"/><path d="M7 2.8v1M2.8 6.5h1M3.6 3.6l.8.8" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M6 16.2h8a3 3 0 000-6 4.6 4.6 0 00-8.8-1.3A3.4 3.4 0 006 16.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Погода
     </button>
@@ -119,7 +116,6 @@
             <div class="home-hero-menu-title">Разделы</div>
             <button class="tab-btn home-hero-menu-item" data-tab="savings"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="5.5" width="15" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 9H17.5" stroke="currentColor" stroke-width="1.6"/><circle cx="14" cy="11.5" r="1" fill="currentColor"/></svg></span> Накопления</button>
             <button class="tab-btn home-hero-menu-item" data-tab="planner"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="4" y="3" width="12" height="14" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M7 7h6M7 10h6M7 13h3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span> Ежедневник</button>
-            <button class="tab-btn home-hero-menu-item" data-tab="study"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M10 5.3C8.5 4.3 6.2 4 3.8 4.3v10.8c2.4-.3 4.7 0 6.2 1 1.5-1 3.8-1.3 6.2-1V4.3c-2.4-.3-4.7 0-6.2 1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 5.3v10.8" stroke="currentColor" stroke-width="1.5"/></svg></span> Учёба</button>
             <button class="tab-btn home-hero-menu-item" data-tab="watchlist"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M10 2.8l2.2 4.5 4.9.7-3.55 3.45.84 4.9L10 14.05l-4.39 2.3.84-4.9L2.9 8l4.9-.7Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Избранное</button>
             <button class="tab-btn home-hero-menu-item" data-tab="portfolio"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="6" width="15" height="10.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 6V4.8a1.3 1.3 0 011.3-1.3h3.4A1.3 1.3 0 0113 4.8V6M2.5 10.5h15" stroke="currentColor" stroke-width="1.5"/></svg></span> Портфель</button>
             <button class="tab-btn home-hero-menu-item" data-tab="charts"><span class="tab-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3 3.5v13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 13l3-4.5 3 2.5 4-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 9.5l3.5 2.2 3-1.7 3.5 1.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/></svg></span> Графики</button>
@@ -642,26 +638,6 @@
       </div>
     </section>
 
-    <!-- УЧЁБА -->
-    <section id="study" class="tab-content">
-      <div class="market-header">
-        <h2>Учёба</h2>
-        <button id="studyRefreshBtn" title="Обновить">⟳ Обновить</button>
-      </div>
-      <div class="study-channels-block">
-        <div class="study-channels-label">Мои каналы</div>
-        <div id="studyChannelsList" class="study-channels-list"></div>
-        <form id="studyChannelForm" class="study-channel-form">
-          <input type="text" id="studyChannelInput" placeholder="Ссылка на канал, напр. https://t.me/durov" autocomplete="off">
-          <button type="submit">+ Добавить</button>
-        </form>
-        <div id="studyChannelError" class="error"></div>
-      </div>
-      <div id="studyMeta" class="market-meta"></div>
-      <div id="studyList" class="study-list"></div>
-      <div id="studyError" class="error"></div>
-    </section>
-
     <!-- ПОГОДА -->
     <section id="weather" class="tab-content">
       <div class="market-header">
@@ -857,7 +833,6 @@
     </div>
   </div>
 </div>
-<script src="study-news.js"></script>
 <script src="stocks-data.js"></script>
 <script src="commodities-data.js"></script>
 <script src="indices-data.js"></script>

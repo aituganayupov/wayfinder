@@ -61,7 +61,6 @@ body {
 :root[data-theme="light"] .savings-chart,
 :root[data-theme="light"] .savings-card,
 :root[data-theme="light"] .market-item,
-:root[data-theme="light"] .study-post,
 :root[data-theme="light"] .weather-current,
 :root[data-theme="light"] .weather-panel,
 :root[data-theme="light"] .commodity-group,
@@ -74,7 +73,6 @@ body {
 :root[data-theme="light"] .note-card,
 :root[data-theme="light"] .day-modal,
 :root[data-theme="light"] .nav-flyout,
-:root[data-theme="light"] .study-channels-block,
 :root[data-theme="light"] .watch-row,
 :root[data-theme="light"] .converter-card,
 :root[data-theme="light"] .chart-stat,
@@ -916,125 +914,6 @@ button:hover { background: var(--accent-hover); }
 }
 .market-item-change.up { color: var(--success); }
 .market-item-change.down { color: var(--danger); }
-
-/* ---------- Study (Telegram news) ---------- */
-#studyRefreshBtn {
-  width: auto;
-  padding: 8px 14px;
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: 13px;
-  border-radius: var(--radius);
-}
-#studyRefreshBtn:hover { background: var(--border); }
-
-.study-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.study-post {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-}
-
-.study-post-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: var(--text-dim);
-}
-
-.study-post-channel {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.study-post-text {
-  font-size: 14px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.study-post-link {
-  display: inline-block;
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--accent);
-  text-decoration: none;
-}
-.study-post-link:hover { text-decoration: underline; }
-
-.study-channels-block {
-  margin-bottom: 16px;
-  padding: 14px 16px;
-  background: color-mix(in srgb, var(--surface) 55%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.study-channels-label {
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-bottom: 8px;
-}
-
-.study-channels-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.study-channel-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 8px 5px 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  font-size: 13px;
-  color: var(--text);
-}
-
-.study-channel-chip button {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 13px;
-  line-height: 1;
-  padding: 0;
-}
-.study-channel-chip button:hover {
-  background: color-mix(in srgb, var(--danger) 25%, transparent);
-  color: var(--danger);
-}
-
-.study-channel-form {
-  display: flex;
-  gap: 8px;
-}
-.study-channel-form input {
-  flex: 1;
-}
-.study-channel-form button {
-  width: auto;
-  padding: 8px 14px;
-  font-size: 13px;
-  background: var(--accent);
-  color: #fff;
-  border-radius: var(--radius);
-}
-.study-channel-form button:hover { background: var(--accent-hover); }
 
 /* ---------- Новости рынка ---------- */
 .news-layout {

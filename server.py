@@ -1,7 +1,6 @@
 """
 Локальный сервер для сайта (необязателен для обычной работы).
-Раздаёт статические файлы и добавляет API-эндпоинт /api/study-news
-для живого обновления новостей без перезапуска update_news.py.
+Раздаёт статические файлы и API-эндпоинты с живыми котировками, новостями и т. д.
 """
 
 import json
@@ -9,7 +8,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
-from telegram_news import collect_all_news
 from stocks_data import collect_all_stocks, search_and_quote_stocks, search_symbols
 from charts_data import fetch_history, fetch_quotes
 from commodities_data import collect_all_commodities
@@ -50,16 +48,6 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        if self.path.startswith("/api/study-news"):
-            raw_channels = parse_qs(urlparse(self.path).query).get("channels", [""])[0]
-            channels = [c.strip().lstrip("@") for c in raw_channels.split(",") if c.strip()]
-            try:
-                data = collect_all_news(channels or None)
-                self._send_json(data)
-            except Exception as exc:  # noqa: BLE001
-                self._send_json({"posts": [], "errors": [{"error": str(exc)}]}, status=500)
-            return
-
         if self.path.startswith("/api/commodities"):
             try:
                 self._send_json(collect_all_commodities())

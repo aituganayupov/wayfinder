@@ -12,7 +12,7 @@ if (window.AbortSignal && AbortSignal.timeout) {
 // обновляет их каждые 5 минут, а открытые вкладки подхватывают их без перезагрузки.
 const IS_HOSTED = location.protocol.startsWith("http") && !["localhost", "127.0.0.1"].includes(location.hostname);
 const STATIC_GLOBALS = {
-  study: "STUDY_NEWS", stocks: "STOCKS_DATA", commodities: "COMMODITIES_DATA", indices: "INDICES_DATA",
+  stocks: "STOCKS_DATA", commodities: "COMMODITIES_DATA", indices: "INDICES_DATA",
   rates: "RATES_DATA", events: "EVENTS_DATA", news: "NEWS_DATA", quotes: "QUOTES_DATA",
 };
 
@@ -700,7 +700,7 @@ function initNotificationsSettings() {
 }
 
 // ---------- Резервная копия данных ----------
-const BACKUP_KEYS = ["app_settings", "savings_items", "planner_tasks", "study_channels", "notes_data",
+const BACKUP_KEYS = ["app_settings", "savings_items", "planner_tasks", "notes_data",
   "custom_events", "watchlist", "paper_portfolio"];
 
 function exportAppData() {
@@ -2214,183 +2214,6 @@ document.getElementById("deadlineForm").addEventListener("submit", e => {
   renderPlanner();
 
   e.target.reset();
-});
-
-// ---------- Study (новости из Telegram-каналов) ----------
-let studyLoaded = false;
-const STUDY_CHANNELS_KEY = "study_channels";
-
-function loadStudyChannels() {
-  try {
-    const raw = localStorage.getItem(STUDY_CHANNELS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function saveStudyChannels(list) {
-  localStorage.setItem(STUDY_CHANNELS_KEY, JSON.stringify(list));
-}
-
-// Принимает ссылку (https://t.me/name, t.me/name), @name или просто name
-// и возвращает "чистое" имя канала.
-function extractChannelUsername(input) {
-  let value = input.trim();
-  value = value.replace(/^https?:\/\//i, "");
-  value = value.replace(/^t\.me\//i, "");
-  value = value.replace(/^@/, "");
-  value = value.split(/[/?#]/)[0];
-  return value.trim();
-}
-
-function renderStudyChannels() {
-  const listEl = document.getElementById("studyChannelsList");
-  const channels = loadStudyChannels();
-
-  if (channels.length === 0) {
-    listEl.innerHTML = `<div class="empty-hint">Пока используются каналы по умолчанию. Добавьте свой, чтобы видеть только нужные.</div>`;
-    return;
-  }
-
-  listEl.innerHTML = "";
-  channels.forEach(name => {
-    const chip = document.createElement("div");
-    chip.className = "study-channel-chip";
-    chip.innerHTML = `<span>@${escapeHtml(name)}</span><button type="button" title="Удалить">✕</button>`;
-    chip.querySelector("button").addEventListener("click", () => removeStudyChannel(name));
-    listEl.appendChild(chip);
-  });
-}
-
-function removeStudyChannel(name) {
-  const channels = loadStudyChannels().filter(c => c !== name);
-  saveStudyChannels(channels);
-  renderStudyChannels();
-  loadStudyNews();
-}
-
-document.getElementById("studyChannelForm").addEventListener("submit", e => {
-  e.preventDefault();
-  const input = document.getElementById("studyChannelInput");
-  const errorEl = document.getElementById("studyChannelError");
-  errorEl.textContent = "";
-
-  const name = extractChannelUsername(input.value);
-  if (!name) {
-    errorEl.textContent = "Вставьте ссылку на канал или его @имя.";
-    return;
-  }
-
-  const channels = loadStudyChannels();
-  if (channels.includes(name)) {
-    errorEl.textContent = "Этот канал уже добавлен.";
-    return;
-  }
-
-  channels.push(name);
-  saveStudyChannels(channels);
-  input.value = "";
-  renderStudyChannels();
-  loadStudyNews();
-});
-
-function formatStudyDate(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d)) return "";
-  return d.toLocaleString("ru-RU", {
-    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-  });
-}
-
-function renderStudyData(data) {
-  const listEl = document.getElementById("studyList");
-  const errorEl = document.getElementById("studyError");
-  const metaEl = document.getElementById("studyMeta");
-  errorEl.textContent = "";
-  listEl.innerHTML = "";
-
-  if (!data.posts || data.posts.length === 0) {
-    listEl.innerHTML = `<div class="empty-hint">Постов пока нет.</div>`;
-  } else {
-    data.posts.forEach(post => {
-      const card = document.createElement("div");
-      card.className = "study-post";
-      card.innerHTML = `
-        <div class="study-post-header">
-          <span class="study-post-channel">@${escapeHtml(post.channel)}</span>
-          <span>${formatStudyDate(post.date)}</span>
-        </div>
-        <div class="study-post-text">${escapeHtml(post.text) || "(пост без текста — фото/видео)"}</div>
-        <a class="study-post-link" href="${post.link}" target="_blank" rel="noopener">Открыть в Telegram →</a>
-      `;
-      listEl.appendChild(card);
-    });
-  }
-
-  if (data.errors && data.errors.length > 0) {
-    const failedChannels = data.errors.map(e => e.channel || "?").join(", ");
-    errorEl.textContent = `Не удалось загрузить каналы: ${failedChannels}`;
-  }
-
-  const updatedTime = data.updatedAt
-    ? new Date(data.updatedAt).toLocaleString("ru-RU")
-    : new Date().toLocaleTimeString("ru-RU");
-  metaEl.textContent = `Постов: ${data.posts ? data.posts.length : 0}. Обновлено: ${updatedTime}`;
-  studyLoaded = true;
-}
-
-async function loadStudyNews() {
-  const listEl = document.getElementById("studyList");
-  const errorEl = document.getElementById("studyError");
-  const metaEl = document.getElementById("studyMeta");
-
-  errorEl.textContent = "";
-  metaEl.textContent = "";
-  listEl.innerHTML = `<div class="empty-hint">Загрузка новостей из Telegram...</div>`;
-
-  const myChannels = loadStudyChannels();
-
-  // Всегда пробуем живой запрос к server.py — там свежие новости.
-  // Если сервер недоступен (напр. сайт открыт напрямую двойным кликом),
-  // используем офлайн-файл study-news.js, обновляемый через update_news.bat.
-  try {
-    const url = myChannels.length > 0
-      ? `/api/study-news?channels=${encodeURIComponent(myChannels.join(","))}`
-      : "/api/study-news";
-    const res = await apiFetch(url);
-    if (!res.ok) throw new Error("network");
-    const data = await res.json();
-    renderStudyData(data);
-  } catch (e) {
-    let data = await loadStaticData("study");
-    if (data) {
-      if (myChannels.length > 0) {
-        data = {
-          ...data,
-          posts: (data.posts || []).filter(p => myChannels.includes(p.channel)),
-        };
-      }
-      renderStudyData(data);
-    } else {
-      listEl.innerHTML = "";
-      metaEl.textContent = "";
-      errorEl.textContent = "Нет данных о новостях." + SERVER_HINT;
-    }
-  }
-}
-
-document.getElementById("studyRefreshBtn").addEventListener("click", loadStudyNews);
-
-renderStudyChannels();
-
-tabBtns.forEach(btn => {
-  if (btn.dataset.tab === "study") {
-    btn.addEventListener("click", () => {
-      if (!studyLoaded) loadStudyNews();
-    });
-  }
 });
 
 document.getElementById("weatherRefreshBtn").addEventListener("click", loadWeatherForecast);

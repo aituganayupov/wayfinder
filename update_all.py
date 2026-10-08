@@ -21,7 +21,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
-from telegram_news import collect_all_news
 from stocks_data import collect_all_stocks
 from commodities_data import collect_all_commodities
 from indices_data import collect_all_indices
@@ -37,7 +36,6 @@ LOG_FILE = ROOT_DIR / "update_all_log.txt"
 
 # имя набора → (файл для двойного клика, глобальная переменная в нём)
 DATASETS = {
-    "study": ("study-news.js", "STUDY_NEWS"),
     "stocks": ("stocks-data.js", "STOCKS_DATA"),
     "commodities": ("commodities-data.js", "COMMODITIES_DATA"),
     "indices": ("indices-data.js", "INDICES_DATA"),
@@ -48,7 +46,6 @@ DATASETS = {
 
 # Как часто обновлять (секунды); остальное — при каждом запуске
 MAX_AGE = {
-    "study": 10 * 60,
     "rates": 60 * 60,
     "events": 6 * 3600,  # Nasdaq отдаёт календарь по дню за запрос (~60 запросов)
 }
@@ -114,12 +111,6 @@ def _load_js_dataset(filename):
         return json.loads(text[text.index("=") + 1:].rstrip().rstrip(";"))
     except (OSError, ValueError):
         return None
-
-
-def update_study():
-    data = collect_all_news()
-    save_dataset("study", data)
-    log(f"Учёба (Telegram): постов {len(data['posts'])}, ошибок {len(data['errors'])}")
 
 
 def update_stocks():
@@ -204,7 +195,6 @@ def main():
     log(f"--- Запуск автообновления{' (облако)' if ci else ''} ---")
 
     jobs = [
-        ("study", update_study),
         ("stocks", update_stocks),
         ("commodities", update_commodities),
         ("indices", update_indices),
