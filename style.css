@@ -3346,10 +3346,15 @@ input[type="time"] {
   border-radius: 20px;
   margin-bottom: 24px;
   padding: 36px 40px 40px;
+  /* Цвет баннера идёт от акцентного цвета из настроек */
   background:
-    radial-gradient(circle at 15% 15%, rgba(91, 140, 255, 0.35), transparent 45%),
-    radial-gradient(circle at 85% 30%, rgba(56, 189, 148, 0.22), transparent 50%),
-    linear-gradient(135deg, #0c1530 0%, #101c3c 45%, #16234a 100%);
+    radial-gradient(circle at 15% 15%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 45%),
+    radial-gradient(circle at 85% 30%, color-mix(in srgb, var(--accent) 30%, rgba(56, 189, 148, 0.5)), transparent 50%),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--accent) 13%, #060912) 0%,
+      color-mix(in srgb, var(--accent) 20%, #080b16) 45%,
+      color-mix(in srgb, var(--accent) 28%, #0a0d1a) 100%);
+  transition: background 0.3s;
   border: 1px solid color-mix(in srgb, #ffffff 10%, transparent);
   box-shadow: 0 20px 50px rgba(5, 10, 30, 0.35);
 }
