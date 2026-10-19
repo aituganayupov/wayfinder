@@ -12,6 +12,10 @@
 <body>
 <div class="app">
   <div class="corner-toolbar">
+    <button type="button" id="cornerAccountBtn" class="corner-btn corner-account-btn" title="Войти в аккаунт">
+      <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3.3" stroke="currentColor" stroke-width="1.6"/><path d="M3.8 16.5c.6-3 3-4.6 6.2-4.6s5.6 1.6 6.2 4.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="corner-account-initial" id="cornerAccountInitial"></span>
+    </button>
     <button type="button" id="cornerThemeBtn" class="corner-btn" title="Сменить тему"></button>
     <button type="button" id="cornerSettingsBtn" class="corner-btn" title="Настройки">
       <svg viewBox="0 0 20 20" fill="none"><path d="M3.5 6h6M13.5 6H16.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10.5" cy="6" r="2" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 14h3M10.5 14H16.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="7.5" cy="14" r="2" stroke="currentColor" stroke-width="1.6"/></svg>
@@ -704,6 +708,13 @@
     <section id="settings" class="tab-content">
       <h2>Настройки</h2>
 
+      <div class="settings-block" id="accountBlock">
+        <h3>Аккаунт</h3>
+        <p class="settings-block-hint" id="accountSettingsText">Войдите, чтобы ваши накопления, дела и заметки были на всех устройствах. Нужны только логин и пароль — без почты и телефона.</p>
+        <button type="button" id="accountSettingsBtn" class="secondary-btn">Войти или зарегистрироваться</button>
+        <div class="settings-block-hint" id="accountSyncStatus"></div>
+      </div>
+
       <div class="settings-block">
         <h3>Профиль</h3>
         <div class="settings-row">
@@ -957,6 +968,16 @@
     </div>
   </div>
 
+  <div class="day-modal-overlay" id="authOverlay">
+    <div class="day-modal auth-modal">
+      <div class="day-modal-header">
+        <h3 id="authTitle">Вход</h3>
+        <button type="button" id="authCloseBtn" class="day-modal-close" title="Закрыть">✕</button>
+      </div>
+      <div id="authBody"></div>
+    </div>
+  </div>
+
   <div class="day-modal-overlay" id="taskModalOverlay">
     <div class="day-modal task-modal">
       <div class="day-modal-header">
@@ -1021,5 +1042,6 @@
 <script src="news-data.js?v=__BUILD__"></script>
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script src="app.js?v=__BUILD__"></script>
+<script type="module" src="auth.js?v=__BUILD__"></script>
 </body>
 </html>

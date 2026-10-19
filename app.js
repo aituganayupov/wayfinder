@@ -1,3 +1,27 @@
+// ---------- Синхронизация с аккаунтом (см. auth.js) ----------
+// Что синхронизируется между устройствами, когда человек вошёл в аккаунт.
+// Без входа ничего не меняется: данные остаются только в этом браузере.
+window.WF_SYNC = (() => {
+  const keys = ["app_settings", "savings_items", "planner_tasks", "notes_data", "custom_events", "watchlist", "paper_portfolio"];
+  const rawSet = Storage.prototype.setItem;
+  const rawRemove = Storage.prototype.removeItem;
+  const api = {
+    keys,
+    onChange: null,
+    rawSet: (key, value) => rawSet.call(localStorage, key, value),
+    rawRemove: key => rawRemove.call(localStorage, key),
+  };
+  Storage.prototype.setItem = function (key, value) {
+    rawSet.call(this, key, value);
+    if (this === localStorage && api.onChange && keys.includes(key)) api.onChange(key, String(value));
+  };
+  Storage.prototype.removeItem = function (key) {
+    rawRemove.call(this, key);
+    if (this === localStorage && api.onChange && keys.includes(key)) api.onChange(key, null);
+  };
+  return api;
+})();
+
 // ---------- Ограничение времени запросов ----------
 // Если источник завис (бывает у Мосбиржи и ЦБ), вкладка не должна ждать вечно:
 // любой запрос без своего signal обрывается через 10 секунд, и сайт показывает то, что есть
@@ -7225,6 +7249,41 @@ loadHomeWeather();
 renderNotes();
 checkDeadlineNotifications();
 setInterval(checkDeadlineNotifications, 30 * 60 * 1000);
+
+// Данные пришли из аккаунта (с другого устройства или при входе) — обновляем экран
+function wfApplyRemoteData() {
+  appSettings = loadSettings();
+  if (!appSettings.timezoneMode) appSettings.timezoneMode = "auto";
+  if (!appSettings.theme) appSettings.theme = "dark";
+  Object.entries(SETTINGS_DEFAULTS).forEach(([key, value]) => {
+    if (appSettings[key] === undefined) appSettings[key] = value;
+  });
+  applyTheme(appSettings.theme);
+  applyAppearance();
+  document.getElementById("cornerThemeBtn").innerHTML = appSettings.theme === "dark" ? THEME_ICONS.moon : THEME_ICONS.sun;
+  const darkRadio = document.getElementById("themeModeDark");
+  if (darkRadio) {
+    darkRadio.checked = appSettings.theme === "dark";
+    document.getElementById("themeModeLight").checked = appSettings.theme === "light";
+    document.getElementById("settingsName").value = appSettings.userName || "";
+    document.getElementById("settingsStartTab").value = appSettings.startTab || "home";
+    document.getElementById("settingsCurrency").value = appSettings.defaultCurrency || "RUB";
+    renderSettingsControls();
+  }
+  updateSidebarClock();
+  renderSavings();
+  renderPlanner();
+  renderHome();
+  if (!noteDraft) renderNotes();
+  renderWatchlist();
+  renderPortfolio();
+  if (eventsLoaded) renderEvents();
+  refreshHomeWatchlist();
+}
+
+document.getElementById("cornerAccountBtn").addEventListener("click", () => {
+  if (!window.WFAuth) alert("Не удалось загрузить вход в аккаунт. Проверьте интернет-соединение и обновите страницу.");
+});
 
 // Цены избранного для карточки «Рынок» на главной
 function refreshHomeWatchlist() {
